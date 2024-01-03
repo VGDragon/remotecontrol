@@ -1,12 +1,15 @@
+import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.application
 import connection.WebsocketConnectionClient
 import connection.WebsocketConnectionServer
 import messages.*
 import messages.base.server.MessageServerClientList
-import messages.base.client.MessageClientConnect
+import messages.base.client.MessageClientAddClientBridge
 import messages.base.MessageStartTask
 import messages.base.ServerAnswerStatus
 import messages.base.client.MessageClientClientList
 import messages.tasks.MessageStartTaskScript
+import java.io.File
 
 class testServer {
     fun websocketServer(): WebsocketConnectionServer {
@@ -30,6 +33,31 @@ class testServer {
             Thread.sleep(1000)
         }
         ws.stop()
+    }
+}
+
+fun startServerWithGuiTest(){
+    val applicationData = ApplicationData.fromFile()
+
+
+    val websocketConnectionServer = WebsocketConnectionServer(applicationData)
+    websocketConnectionServer.start()
+    Thread.sleep(3000)
+
+
+    val scriptFolderFile = File(GlobalVariables.scriptFolder)
+    if (!scriptFolderFile.exists()){
+        scriptFolderFile.mkdirs()
+    }
+    val websocketConnectionClient = WebsocketConnectionClient(applicationData, true)
+    websocketConnectionClient.connectAndRegister(doJoin = false)
+
+    Thread.sleep(2000)
+
+    application {
+        Window(onCloseRequest = ::exitApplication) {
+            App()
+        }
     }
 }
 
@@ -62,9 +90,9 @@ fun testingScript(){
     // connect to first client
     websocketConnectionClient.send(
         WebsocketMessageClient(
-            type = MessageClientConnect.TYPE,
+            type = MessageClientAddClientBridge.TYPE,
             apiKey = applicationData.apiKey,
-            data = MessageClientConnect(
+            data = MessageClientAddClientBridge(
                 clientName = messageClientList.clientNames[0])
                 .toJson())
             .toJson())
@@ -97,5 +125,6 @@ fun testingScript(){
 }
 
 fun main(args: Array<String>) {
-    testingScript()
+    //testingScript()
+    startServerWithGuiTest()
 }

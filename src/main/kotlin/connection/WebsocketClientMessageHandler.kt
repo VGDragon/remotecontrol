@@ -37,13 +37,16 @@ class WebsocketClientMessageHandler(val applicationData: ApplicationData) {
 
             MessageServerClientList.TYPE -> {
                 println("Client: List received")
-                ws.addServerInfo(MessageServerResponseCode(ServerAnswerStatus.OK, MessageServerClientList.fromJson(message.data)))
+                ws.setExecClientListVariable(MessageServerClientList.fromJson(message.data).clientNames)
+                ws.addServerInfo(MessageServerResponseCode(ServerAnswerStatus.OK, ""))
             }
 
             MessageServerResponseCode.TYPE -> {
                 println("Client: Info received")
                 ws.addServerInfo(MessageServerResponseCode.fromJson(message.data))
             }
+
+
 
             MessageStartTask.TYPE -> {
                 if(startTaskHandler(ws, MessageStartTask.fromJson(message.data))) {

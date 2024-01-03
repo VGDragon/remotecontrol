@@ -2,7 +2,7 @@ import com.google.gson.Gson
 
 class ApplicationData{
     var apiKey: String = ""
-    var ip: String = "localhost"
+    var address: String = "localhost"
     var port: Int = 8080
     init {
         if (apiKey.isEmpty()){

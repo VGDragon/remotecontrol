@@ -4,8 +4,9 @@ import ApplicationData
 import messages.*
 import messages.base.*
 import messages.base.client.*
-import messages.base.server.MessageServerBridgedClients
+import messages.base.client.MessageClientBridgedClients
 import messages.base.client.MessageClientClientList
+import messages.base.server.MessageServerBridgedClients
 import messages.base.server.MessageServerClientList
 import org.java_websocket.WebSocket
 
@@ -40,32 +41,32 @@ class WebsocketServerMessageHandler(val applicationData: ApplicationData) {
             MessageClientRegister.TYPE -> {
                 val registerMessage = MessageClientRegister.fromJson(message.data)
                 websocketConnectionServer.setClientRegisterItem(registerMessage.clientName, ws)
+                ws.send(MessageServerResponseCode.toJson(ServerAnswerStatus.OK, ""))
                 println("Server: Client registered: ${registerMessage.clientName}")
             }
-            MessageClientConnect.TYPE -> {
-                val messageClientConnect = MessageClientConnect.fromJson(message.data)
+            MessageClientAddClientBridge.TYPE -> {
+                val messageClientAddClientBridge = MessageClientAddClientBridge.fromJson(message.data)
                 val connectedWs = websocketConnectionServer
-                    .getClientRegisterItem(messageClientConnect.clientName)
+                    .getClientRegisterItem(messageClientAddClientBridge.clientName)
                 if (connectedWs == null) {
                     println("Server: Client not found")
                     return
                 }
-                websocketConnectionServer.setClientBridgeItem(ws, connectedWs)
-                websocketConnectionServer.setClientBridgeItem(connectedWs, ws)
-                println("Server: Client connected: ${messageClientConnect.clientName}")
+                websocketConnectionServer.connectBride(ws, connectedWs)
+                println("Server: Client connected: ${messageClientAddClientBridge.clientName}")
                 ws.send(MessageServerResponseCode.toJson(ServerAnswerStatus.OK, ""))
             }
-            MessageClientDisconnect.TYPE -> {
-                val messageClientConnect = MessageClientConnect.fromJson(message.data)
+            MessageClientRemoveClientBridge.TYPE -> {
+                val messageClientAddClientBridge = MessageClientAddClientBridge.fromJson(message.data)
                 val connectedWs = websocketConnectionServer
-                    .getClientRegisterItem(messageClientConnect.clientName)
+                    .getClientRegisterItem(messageClientAddClientBridge.clientName)
                 if (connectedWs == null) {
                     println("Server: Client not found")
                     ws.send(MessageServerResponseCode.toJson(ServerAnswerStatus.CLIENT_NOT_FOUND, "Client not found"))
                     return
                 }
                 websocketConnectionServer.removeClientBridgeItem(ws)
-                println("Server: Client disconnected: ${messageClientConnect.clientName}")
+                println("Server: Client disconnected: ${messageClientAddClientBridge.clientName}")
                 ws.send(MessageServerResponseCode.toJson(ServerAnswerStatus.OK, ""))
             }
             MessageClientClientList.TYPE -> {

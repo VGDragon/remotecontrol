@@ -24,6 +24,10 @@ class WebsocketConnectionClient : WebSocketClient {
     var isConnectionError: Boolean = false
     val isConnectionErrorLock = Object()
 
+    // a list of clients that are connected to the server
+    val execClientList: MutableList<String> = mutableListOf()
+    val execClientListLock = Object()
+
     // a list of tasks that are running on the server
     val taskList = mutableListOf<TaskInterface>()
     val taskListLock = Object()
@@ -31,14 +35,14 @@ class WebsocketConnectionClient : WebSocketClient {
     val serverInfoList = mutableListOf<MessageServerResponseCode>()
 
     constructor(applicationData: ApplicationData, executeTask: Boolean = false) :
-            super(URI("ws://${applicationData.ip}:${applicationData.port}")) {
+            super(URI("ws://${applicationData.address}:${applicationData.port}")) {
         this.applicationData = applicationData
         this.websocketClientMessageHandler = WebsocketClientMessageHandler(applicationData)
         this.executeTask = executeTask
         this.isConnected = false
     }
 
-    fun connectAndRegister(){
+    fun connectAndRegister(doJoin: Boolean = true){
         this.connect()
         waitForConnection()
         if (getIsConnectionError()) {
@@ -67,10 +71,12 @@ class WebsocketConnectionClient : WebSocketClient {
                 }
             }
         }
-        while (isConnected) {
-            Thread.sleep(100)
+        if (doJoin) {
+            while (isConnected) {
+                Thread.sleep(100)
+            }
+            this.close()
         }
-        this.close()
     }
 
     fun waitForResponse(): MessageServerResponseCode {
@@ -111,6 +117,8 @@ class WebsocketConnectionClient : WebSocketClient {
             setIsConnectionError(true)
         }
     }
+
+    // getters and setters
 
     fun getKeepRunning(): Boolean {
         synchronized(keepWsRunningLock) {
@@ -205,6 +213,33 @@ class WebsocketConnectionClient : WebSocketClient {
     fun getServerInfoSize(): Int {
         synchronized(serverInfoList) {
             return serverInfoList.size
+        }
+    }
+
+    fun addToExecClientList(clientName: String) {
+        synchronized(execClientListLock) {
+            execClientList.add(clientName)
+        }
+    }
+    fun removeFromExecClientList(clientName: String) {
+        synchronized(execClientListLock) {
+            execClientList.remove(clientName)
+        }
+    }
+    fun getFromExecClientList(index: Int): String {
+        synchronized(execClientListLock) {
+            return execClientList[index]
+        }
+    }
+    fun getExecClientListVariable(): List<String> {
+        synchronized(execClientListLock) {
+            return execClientList.toList()
+        }
+    }
+    fun setExecClientListVariable(value: List<String>) {
+        synchronized(execClientListLock) {
+            execClientList.clear()
+            execClientList.addAll(value)
         }
     }
 }

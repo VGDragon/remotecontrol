@@ -1,6 +1,6 @@
 package messages.base.client
 
-class MessageClientDisconnect {
+class MessageClientRemoveClientBridge {
     companion object {
         const val TYPE = "disconnectClient"
     }

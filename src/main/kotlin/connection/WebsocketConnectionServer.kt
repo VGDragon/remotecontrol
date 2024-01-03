@@ -76,6 +76,18 @@ class WebsocketConnectionServer : WebSocketServer {
             clientBridge[key] = value
         }
     }
+    fun connectBride(ws1: WebSocket, ws2: WebSocket) {
+        synchronized(clientBridgeLock) {
+            if (clientBridge.containsValue(ws1)) {
+                clientBridge.remove(clientBridge.filterValues { it == ws1 }.keys.first())
+            }
+            if (clientBridge.containsValue(ws2)) {
+                clientBridge.remove(clientBridge.filterValues { it == ws2 }.keys.first())
+            }
+            clientBridge[ws1] = ws2
+            clientBridge[ws2] = ws1
+        }
+    }
     fun removeClientBridgeItem(key: WebSocket) {
         synchronized(clientBridgeLock) {
             clientBridge.remove(key)
