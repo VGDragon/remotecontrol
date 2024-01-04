@@ -88,6 +88,18 @@ class WebsocketConnectionServer : WebSocketServer {
             clientBridge[ws2] = ws1
         }
     }
+    fun disconnectBridge(ws: WebSocket): Boolean {
+        synchronized(clientBridgeLock) {
+            val ws2 = clientBridge[ws] ?: return false
+            if (clientBridge.containsValue(ws)) {
+                clientBridge.remove(clientBridge.filterValues { it == ws }.keys.first())
+            }
+            if (clientBridge.containsValue(ws2)) {
+                clientBridge.remove(clientBridge.filterValues { it == ws2 }.keys.first())
+            }
+            return true
+        }
+    }
     fun removeClientBridgeItem(key: WebSocket) {
         synchronized(clientBridgeLock) {
             clientBridge.remove(key)

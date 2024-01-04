@@ -57,16 +57,8 @@ class WebsocketServerMessageHandler(val applicationData: ApplicationData) {
                 ws.send(MessageServerResponseCode.toJson(ServerAnswerStatus.OK, ""))
             }
             MessageClientRemoveClientBridge.TYPE -> {
-                val messageClientAddClientBridge = MessageClientAddClientBridge.fromJson(message.data)
-                val connectedWs = websocketConnectionServer
-                    .getClientRegisterItem(messageClientAddClientBridge.clientName)
-                if (connectedWs == null) {
-                    println("Server: Client not found")
-                    ws.send(MessageServerResponseCode.toJson(ServerAnswerStatus.CLIENT_NOT_FOUND, "Client not found"))
-                    return
-                }
-                websocketConnectionServer.removeClientBridgeItem(ws)
-                println("Server: Client disconnected: ${messageClientAddClientBridge.clientName}")
+                websocketConnectionServer.disconnectBridge(ws)
+                println("Server: Client bridge removed")
                 ws.send(MessageServerResponseCode.toJson(ServerAnswerStatus.OK, ""))
             }
             MessageClientClientList.TYPE -> {

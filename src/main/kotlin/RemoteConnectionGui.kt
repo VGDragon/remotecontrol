@@ -20,7 +20,8 @@ import messages.base.client.MessageClientAddClientBridge
 import messages.base.client.MessageClientBridgedClients
 import messages.base.server.MessageServerBridgedClients
 import messages.base.client.MessageClientClientList
-
+import messages.base.client.MessageClientRemoveClientBridge
+import kotlin.concurrent.thread
 
 
 @Composable
@@ -29,8 +30,8 @@ fun App() {
     var connectButtonText by remember { mutableStateOf("Connect") }
     var disconnectButtonText by remember { mutableStateOf("Disconnect") }
 
-    val applicationData = ApplicationData.fromFile()
-    var websocketConnectionClient: WebsocketConnectionClient? = null
+    val applicationData by remember { mutableStateOf(ApplicationData.fromFile()) }
+    var websocketConnectionClient: WebsocketConnectionClient? by remember { mutableStateOf(null) }
 
     // connection variables
     var connectionAddress by remember { mutableStateOf(TextFieldValue(applicationData.address)) }
@@ -44,6 +45,11 @@ fun App() {
     // connect and disconnect buttons
     val connectButtonActive = remember { mutableStateOf(true) }
     val disconnectButtonActive = remember { mutableStateOf(false) }
+
+    // client bridged
+    var doBrideClient by remember { mutableStateOf("") }
+    var isClientBridged by remember { mutableStateOf("") }
+    var doRemoveBrideClient by remember { mutableStateOf("") }
 
     // GUI Data Class
     //val guiDataClass by remember { mutableStateOf(GuiDataClass()) }
@@ -115,6 +121,7 @@ fun App() {
                         onClick = {
                             websocketConnectionClient!!.setIsConnected(false)
                             websocketConnectionClient!!.close()
+                            websocketConnectionClient = null
                             connectButtonActive.value = true
                             disconnectButtonActive.value = false
                         }) {
@@ -132,33 +139,94 @@ fun App() {
                             Text("Client List:", fontSize = 20.sp)
                             for (clientName in websocketConnectionClient?.getExecClientListVariable() ?: listOf()) {
                                 // add button for each client
-                                Button(onClick = {
-                                    websocketConnectionClient!!.send(
-                                        WebsocketMessageClient(
-                                            type = MessageClientAddClientBridge.TYPE,
-                                            apiKey = applicationData.apiKey,
-                                            data = MessageClientAddClientBridge(clientName = clientName
-                                            ).toJson()
-                                        ).toJson()
-                                    )
-                                    val response = websocketConnectionClient!!.waitForResponse()
-                                    if (response.status == ServerAnswerStatus.OK) {
-                                        println("Client: Client bridge added")
-                                    } else {
-                                        println("Client: Client bridge not added")
-                                    }
+                                if (!isClientBridged.isBlank() && isClientBridged != clientName) {
+                                    continue
+                                }
+                                Button(
+                                    enabled = isClientBridged.isBlank() && doBrideClient.isBlank(),
+                                    onClick = {
+                                    doBrideClient = clientName
                                 }) {
                                     Text(clientName)
                                 }
                             }
+
+                            // add remove bridge button
+                            if (!isClientBridged.isBlank()) {
+                                Button(
+                                    onClick = {
+                                        doRemoveBrideClient = isClientBridged
+                                    }) {
+                                    Text("Remove Bridge")
+                                }
+                            }
+
+                            // add task list
+                            // TODO: add task list
                         }
                     }
                 }
             }
         }
     }
+
+    if (!doBrideClient.isBlank()){
+        val clientNameToBridgeTo = doBrideClient
+        val bridgingThread = Thread {
+            isClientBridged = brideClient(websocketConnectionClient!!, clientNameToBridgeTo, applicationData)
+        }
+        doBrideClient = ""
+        bridgingThread.start()
+    }
+    if (!doRemoveBrideClient.isBlank()){
+        val clientNameToBridgeTo = doRemoveBrideClient
+        val bridgingThread = Thread {
+            removeClientBridge(websocketConnectionClient!!, clientNameToBridgeTo, applicationData)
+            isClientBridged = ""
+        }
+        doRemoveBrideClient = ""
+        bridgingThread.start()
+    }
+
 }
 
+fun brideClient(websocketConnectionClient: WebsocketConnectionClient, clientName: String, applicationData: ApplicationData): String {
+    println("Client: Adding client bridge - $clientName")
+    websocketConnectionClient.send(
+        WebsocketMessageClient(
+            type = MessageClientAddClientBridge.TYPE,
+            apiKey = applicationData.apiKey,
+            data = MessageClientAddClientBridge(clientName = clientName
+            ).toJson()
+        ).toJson()
+    )
+    val response = websocketConnectionClient.waitForResponse()
+    if (response.status == ServerAnswerStatus.OK) {
+        println("Client: Client bridge added")
+        return clientName
+    } else {
+        println("Client: Client bridge not added")
+        return ""
+    }
+}
+
+fun removeClientBridge(websocketConnectionClient: WebsocketConnectionClient, clientName: String, applicationData: ApplicationData) {
+    println("Client: Removing client bridge - $clientName")
+
+    websocketConnectionClient.send(
+        WebsocketMessageClient(
+            type = MessageClientRemoveClientBridge.TYPE,
+            apiKey = applicationData.apiKey,
+            data = ""
+        ).toJson()
+    )
+    val response = websocketConnectionClient.waitForResponse()
+    if (response.status == ServerAnswerStatus.OK) {
+        println("Client: Client bridge removed")
+    } else {
+        println("Client: Client bridge not removed")
+    }
+}
 
 @Composable
 @Preview
