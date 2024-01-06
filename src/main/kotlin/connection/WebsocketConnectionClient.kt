@@ -1,6 +1,6 @@
 package connection
 
-import ApplicationData
+import filedata.ApplicationData
 import interfaces.TaskInterface
 import messages.*
 import messages.base.client.MessageClientRegister

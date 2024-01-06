@@ -1,6 +1,6 @@
 package connection
 
-import ApplicationData
+import filedata.ApplicationData
 import GlobalVariables
 import interfaces.TaskInterface
 import interfaces.TaskMessageInterface

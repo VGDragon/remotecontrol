@@ -9,8 +9,8 @@ class MessageServerBridgedClients(val clientName: String) {
     }
 
     companion object {
-        fun fromJson(json: String): MessageClientBridgedClients {
-            return Gson().fromJson(json, MessageClientBridgedClients::class.java)
+        fun fromJson(json: String): MessageServerBridgedClients {
+            return Gson().fromJson(json, MessageServerBridgedClients::class.java)
         }
 
         const val TYPE = "bridgedClients"

@@ -1,6 +1,6 @@
 package connection
 
-import ApplicationData
+import filedata.ApplicationData
 import messages.*
 import messages.base.*
 import messages.base.client.*
@@ -76,13 +76,19 @@ class WebsocketServerMessageHandler(val applicationData: ApplicationData) {
                     .getClientBridgeItem(ws)
                 if (connectedWs == null) {
                     println("Server: Client not found")
-                    ws.send(MessageServerResponseCode.toJson(ServerAnswerStatus.CLIENT_NOT_FOUND, "Client not found"))
+                    ws.send(WebsocketMessageServer(
+                        type = MessageServerBridgedClients.TYPE,
+                        data = MessageServerBridgedClients(clientName = "").toJson()
+                    ).toJson())
                     return
                 }
                 val bridgedClientName = websocketConnectionServer.getClientRegisterNameFromWs(connectedWs)
                 if (bridgedClientName == null) {
                     println("Server: Client not found")
-                    ws.send(MessageServerResponseCode.toJson(ServerAnswerStatus.CLIENT_NOT_FOUND, "Client not found"))
+                    ws.send(WebsocketMessageServer(
+                        type = MessageServerBridgedClients.TYPE,
+                        data = MessageServerBridgedClients(clientName = "").toJson()
+                    ).toJson())
                     return
                 }
                 val messageClientBridgedClients = WebsocketMessageServer(

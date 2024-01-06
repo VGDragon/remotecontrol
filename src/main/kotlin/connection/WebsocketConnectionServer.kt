@@ -1,6 +1,6 @@
 package connection
 
-import ApplicationData
+import filedata.ApplicationData
 import messages.WebsocketMessageClient
 import org.java_websocket.WebSocket
 import org.java_websocket.handshake.ClientHandshake

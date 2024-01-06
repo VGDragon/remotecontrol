@@ -2,6 +2,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import connection.WebsocketConnectionClient
 import connection.WebsocketConnectionServer
+import filedata.ApplicationData
 import java.io.File
 
 fun main(args: Array<String>) {

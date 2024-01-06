@@ -1,3 +1,6 @@
+package filedata
+
+import GlobalVariables
 import com.google.gson.Gson
 
 class ApplicationData{
