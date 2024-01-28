@@ -9,9 +9,10 @@ import java.util.*
 class TaskStartScript(
     val scriptName: String,
     val websocketConnectionClient: WebsocketConnectionClient,
-    override val nextTask: TaskInterface?
+    override val nextTask: TaskInterface?,
+    override val startedFrom: String
 ) : TaskInterface {
-    override val taskName: String = "StartScriptTask"
+    override val taskName: String = TaskStartScript.taskName
     override var taskThread: Thread? = null
     override val taskThreadLock = Object()
 
@@ -73,5 +74,8 @@ class TaskStartScript(
         }
         println("Stopping StartScriptTask")
         websocketConnectionClient.removeTask(this)
+    }
+    companion object {
+        val taskName: String = "StartScrip"
     }
 }

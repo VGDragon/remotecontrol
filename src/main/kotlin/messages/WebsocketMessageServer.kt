@@ -4,7 +4,8 @@ import com.google.gson.Gson
 
 class WebsocketMessageServer (
     val type: String,
-    val data: String){
+    val data: String,
+    val sendFrom: String){
 
     fun toJson(): String{
         return Gson().toJson(this)

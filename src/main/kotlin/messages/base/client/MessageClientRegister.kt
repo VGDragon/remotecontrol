@@ -2,7 +2,7 @@ package messages.base.client
 
 import com.google.gson.Gson
 
-class MessageClientRegister(val clientName: String = "") {
+class MessageClientRegister(val clientName: String = "", val isExecutable: Boolean = true) {
 
     var connectedClientName: String = ""
 

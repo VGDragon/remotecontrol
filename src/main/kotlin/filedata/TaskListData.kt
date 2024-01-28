@@ -1,5 +1,10 @@
 package filedata
 
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshots.SnapshotMutableState
 import com.google.gson.Gson
 
 class TaskListData(
@@ -7,6 +12,17 @@ class TaskListData(
     var taskName: String = "",
     var taskActionDataList: MutableList<TaskActionData> = mutableListOf()
 ) {
+    val taskActionDataListState: MutableState<List<TaskActionData>> = mutableStateOf(taskActionDataList)
+    fun removeTaskActionData(itemToRemove: TaskActionData) {
+        taskActionDataList.remove(itemToRemove)
+        // Update the state to trigger recomposition
+        taskActionDataListState.value = taskActionDataList.toList()
+    }
+    fun addTaskActionData(itemToAdd: TaskActionData) {
+        taskActionDataList.add(itemToAdd)
+        // Update the state to trigger recomposition
+        taskActionDataListState.value = taskActionDataList.toList()
+    }
     fun toJson(): String {
         return Gson().toJson(this)
     }

@@ -5,12 +5,13 @@ import connection.WebsocketConnectionServer
 import filedata.ApplicationData
 import messages.*
 import messages.base.server.MessageServerClientList
-import messages.base.client.MessageClientAddClientBridge
 import messages.base.MessageStartTask
 import messages.base.ServerAnswerStatus
 import messages.base.client.MessageClientClientList
 import messages.tasks.MessageStartTaskScript
 import java.io.File
+import kotlin.reflect.cast
+import kotlin.reflect.safeCast
 
 class testServer {
     fun websocketServer(): WebsocketConnectionServer {
@@ -63,66 +64,14 @@ fun startServerWithGuiTest(){
 }
 
 fun testingScript(){
-    val applicationData = ApplicationData.fromFile()
-    val websocketConnectionClient = WebsocketConnectionClient(applicationData, false)
-    websocketConnectionClient.connect()
-    websocketConnectionClient.waitForConnection()
-    if (websocketConnectionClient.getIsConnectionError()) {
-        println("Connection error")
-        return
-    }
-    // get list of clients
-    websocketConnectionClient.send(
-        WebsocketMessageClient(
-            type = MessageClientClientList.TYPE,
-            apiKey = applicationData.apiKey,
-            data = "")
-            .toJson())
-    var serverInfo = websocketConnectionClient.waitForResponse()
-    if (serverInfo.status != ServerAnswerStatus.OK) {
-        println("Server response: ${serverInfo.status} ${serverInfo.message}")
-        return
-    }
-    val messageClientList = serverInfo.message as MessageServerClientList
-    if (messageClientList.clientNames.isEmpty()) {
-        println("No clients found")
-        return
-    }
-    // connect to first client
-    websocketConnectionClient.send(
-        WebsocketMessageClient(
-            type = MessageClientAddClientBridge.TYPE,
-            apiKey = applicationData.apiKey,
-            data = MessageClientAddClientBridge(
-                clientName = messageClientList.clientNames[0])
-                .toJson())
-            .toJson())
-    if (websocketConnectionClient.waitForResponse().status != ServerAnswerStatus.OK) {
-        println("Client not found")
-        return
-    }
-    // send task
-    val taskList = mutableListOf<String>()
-    taskList.add(
-        MessageStartTaskScript(
-            type = MessageStartTaskScript.TYPE,
-            scriptName = "testing.bat").toJson()
-    )
-    websocketConnectionClient.send(
-        WebsocketMessageClient(
-            type = MessageStartTask.TYPE,
-            apiKey = applicationData.apiKey,
-            data = MessageStartTask(
-                taskList = taskList)
-                .toJson())
-            .toJson())
-    serverInfo = websocketConnectionClient.waitForResponse()
-    if (serverInfo.status != ServerAnswerStatus.OK) {
-        println("Server response: ${serverInfo.status} ${serverInfo.message}")
-        return
-    }
-    websocketConnectionClient.close()
-    println(serverInfo)
+    // storing a class in a variable and create a class object from it
+    var functionVariableMap: Map<String, String> = mapOf("type" to "testScript", "scriptName" to "testScript")
+    var functionvariableList: List<String> = listOf("type", "scriptName")
+    var messageStartTaskBaseConvertClass = Pair(
+        MessageStartTaskScript::toJson, MessageStartTaskScript::fromMap)
+
+    //var messageStartTaskBaseConvertObject = messageStartTaskBaseConvertClass.first(functionVariableMap)
+    println()
 }
 
 fun main(args: Array<String>) {

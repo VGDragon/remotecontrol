@@ -15,10 +15,10 @@ class WebsocketConnectionServer : WebSocketServer {
     var websocketClientMessageHandler: WebsocketServerMessageHandler
     var keepWsRunning: Boolean = true
     var keepWsRunningLock = Object()
-    val clientRegisterMap: MutableMap<String, WebSocket> = mutableMapOf()
-    val clientRegisterMapLock = Object()
-    val clientBridge: MutableMap<WebSocket, WebSocket> = mutableMapOf()
-    val clientBridgeLock = Object()
+    val clientTaskRunningPermission: MutableMap<String, WebSocket> = mutableMapOf()
+    val clientTaskRunningPermissionLock = Object()
+    val clientConnectedNames: MutableMap<String, WebSocket> = mutableMapOf()
+    val clientConnectedNamesLock = Object()
 
     constructor(applicationData: ApplicationData) : super(InetSocketAddress(applicationData.port)) {
         this.applicationData = applicationData
@@ -39,7 +39,6 @@ class WebsocketConnectionServer : WebSocketServer {
             return
         }
         websocketClients.remove(p0)
-        removeClientBridgeItem(p0)
     }
 
     override fun onMessage(p0: WebSocket?, p1: String?) {
@@ -66,70 +65,52 @@ class WebsocketConnectionServer : WebSocketServer {
             keepWsRunning = value
         }
     }
-    fun getClientBridgeItem(key: WebSocket): WebSocket? {
-        synchronized(clientBridgeLock) {
-            return clientBridge[key]
-        }
-    }
-    fun setClientBridgeItem(key: WebSocket, value: WebSocket) {
-        synchronized(clientBridgeLock) {
-            clientBridge[key] = value
-        }
-    }
-    fun connectBride(ws1: WebSocket, ws2: WebSocket) {
-        synchronized(clientBridgeLock) {
-            if (clientBridge.containsValue(ws1)) {
-                clientBridge.remove(clientBridge.filterValues { it == ws1 }.keys.first())
-            }
-            if (clientBridge.containsValue(ws2)) {
-                clientBridge.remove(clientBridge.filterValues { it == ws2 }.keys.first())
-            }
-            clientBridge[ws1] = ws2
-            clientBridge[ws2] = ws1
-        }
-    }
-    fun disconnectBridge(ws: WebSocket): Boolean {
-        synchronized(clientBridgeLock) {
-            val ws2 = clientBridge[ws] ?: return false
-            if (clientBridge.containsValue(ws)) {
-                clientBridge.remove(clientBridge.filterValues { it == ws }.keys.first())
-            }
-            if (clientBridge.containsValue(ws2)) {
-                clientBridge.remove(clientBridge.filterValues { it == ws2 }.keys.first())
-            }
-            return true
-        }
-    }
-    fun removeClientBridgeItem(key: WebSocket) {
-        synchronized(clientBridgeLock) {
-            clientBridge.remove(key)
-        }
-    }
-    fun getClientNames(): List<String> {
-        synchronized(clientRegisterMapLock) {
-            return clientRegisterMap.keys.toList()
+    fun getClientRegisteredNames(): List<String> {
+        synchronized(clientTaskRunningPermissionLock) {
+            return clientTaskRunningPermission.keys.toList()
         }
     }
     fun getClientRegisterItem(key: String): WebSocket? {
-        synchronized(clientRegisterMapLock) {
-            return clientRegisterMap[key]
+        synchronized(clientTaskRunningPermissionLock) {
+            return clientTaskRunningPermission[key]
         }
     }
     fun setClientRegisterItem(key: String, value: WebSocket) {
-        synchronized(clientRegisterMapLock) {
-            clientRegisterMap[key] = value
+        synchronized(clientTaskRunningPermissionLock) {
+            clientTaskRunningPermission[key] = value
         }
     }
 
     fun getClientRegisterNameFromWs(ws: WebSocket): String? {
-        synchronized(clientRegisterMapLock) {
-            for ((key, value) in clientRegisterMap) {
+        synchronized(clientTaskRunningPermissionLock) {
+            for ((key, value) in clientTaskRunningPermission) {
                 if (value == ws) {
                     return key
                 }
             }
         }
         return null
+    }
+
+    fun getClientConnectedNames(): List<String> {
+        synchronized(clientConnectedNamesLock) {
+            return clientConnectedNames.keys.toList()
+        }
+    }
+    fun getClientConnectedItem(key: String): WebSocket? {
+        synchronized(clientConnectedNamesLock) {
+            return clientConnectedNames[key]
+        }
+    }
+    fun setClientConnectedItem(key: String, value: WebSocket) {
+        synchronized(clientConnectedNamesLock) {
+            clientConnectedNames[key] = value
+        }
+    }
+    fun removeClientConnectedItem(key: String) {
+        synchronized(clientConnectedNamesLock) {
+            clientConnectedNames.remove(key)
+        }
     }
 
 }

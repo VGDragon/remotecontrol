@@ -33,6 +33,7 @@ class WebsocketConnectionClient : WebSocketClient {
     val taskListLock = Object()
 
     val serverInfoList = mutableListOf<MessageServerResponseCode>()
+    var computerName: String
 
     constructor(applicationData: ApplicationData, executeTask: Boolean = false) :
             super(URI("ws://${applicationData.address}:${applicationData.port}")) {
@@ -40,24 +41,32 @@ class WebsocketConnectionClient : WebSocketClient {
         this.websocketClientMessageHandler = WebsocketClientMessageHandler(applicationData)
         this.executeTask = executeTask
         this.isConnected = false
+        this.computerName = System.getenv("COMPUTERNAME")
+        if (this.executeTask){
+            computerName += "_executable"
+        }
     }
 
-    fun connectAndRegister(doJoin: Boolean = true){
+    fun connectAndRegister(doJoin: Boolean = true) {
         this.connect()
         waitForConnection()
         if (getIsConnectionError()) {
             println("Client: Connection error")
             return
         }
-        val computerName = System.getenv("COMPUTERNAME")
         this.send(
             WebsocketMessageClient(
-            type = MessageClientRegister.TYPE,
-            apiKey = applicationData.apiKey,
-            data = MessageClientRegister(
-                clientName = computerName)
-                .toJson())
-            .toJson())
+                type = MessageClientRegister.TYPE,
+                apiKey = applicationData.apiKey,
+                sendFrom = "",
+                sendTo = "",
+                data = MessageClientRegister(
+                    clientName = computerName
+                )
+                    .toJson()
+            )
+                .toJson()
+        )
         while (!isRegistered) {
             Thread.sleep(100)
             if (getServerInfoSize() > 0) {
@@ -125,6 +134,7 @@ class WebsocketConnectionClient : WebSocketClient {
             return keepWsRunning
         }
     }
+
     fun setKeepRunning(value: Boolean) {
         synchronized(keepWsRunningLock) {
             keepWsRunning = value
@@ -136,6 +146,7 @@ class WebsocketConnectionClient : WebSocketClient {
             return isConnected
         }
     }
+
     fun setIsConnected(value: Boolean) {
         synchronized(isConnectedLock) {
             isConnected = value
@@ -147,6 +158,7 @@ class WebsocketConnectionClient : WebSocketClient {
             return isConnectionError
         }
     }
+
     fun setIsConnectionError(value: Boolean) {
         synchronized(isConnectionErrorLock) {
             isConnectionError = value
@@ -158,6 +170,7 @@ class WebsocketConnectionClient : WebSocketClient {
             return isRegistered
         }
     }
+
     fun setIsRegistered(value: Boolean) {
         synchronized(isRegisteredLock) {
             isRegistered = value
@@ -169,21 +182,25 @@ class WebsocketConnectionClient : WebSocketClient {
             taskList.add(task)
         }
     }
+
     fun removeTask(task: TaskInterface) {
         synchronized(taskListLock) {
             taskList.remove(task)
         }
     }
+
     fun removeTask(index: Int) {
         synchronized(taskListLock) {
             taskList.removeAt(index)
         }
     }
+
     fun getTask(index: Int): TaskInterface {
         synchronized(taskListLock) {
             return taskList[index]
         }
     }
+
     fun getTaskSize(): Int {
         synchronized(taskListLock) {
             return taskList.size
@@ -195,21 +212,25 @@ class WebsocketConnectionClient : WebSocketClient {
             serverInfoList.add(serverInfo)
         }
     }
+
     fun removeServerInfo(serverInfo: MessageServerResponseCode) {
         synchronized(serverInfoList) {
             serverInfoList.remove(serverInfo)
         }
     }
+
     fun removeServerInfo(index: Int) {
         synchronized(serverInfoList) {
             serverInfoList.removeAt(index)
         }
     }
+
     fun getServerInfo(index: Int): MessageServerResponseCode {
         synchronized(serverInfoList) {
             return serverInfoList.removeAt(index)
         }
     }
+
     fun getServerInfoSize(): Int {
         synchronized(serverInfoList) {
             return serverInfoList.size
@@ -221,21 +242,25 @@ class WebsocketConnectionClient : WebSocketClient {
             execClientList.add(clientName)
         }
     }
+
     fun removeFromExecClientList(clientName: String) {
         synchronized(execClientListLock) {
             execClientList.remove(clientName)
         }
     }
+
     fun getFromExecClientList(index: Int): String {
         synchronized(execClientListLock) {
             return execClientList[index]
         }
     }
+
     fun getExecClientListVariable(): List<String> {
         synchronized(execClientListLock) {
             return execClientList.toList()
         }
     }
+
     fun setExecClientListVariable(value: List<String>) {
         synchronized(execClientListLock) {
             execClientList.clear()

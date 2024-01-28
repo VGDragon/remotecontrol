@@ -11,24 +11,16 @@ class MessageStartTaskBaseConvert(override val type: String) : TaskMessageInterf
         return Gson().toJson(this)
     }
 
-    override fun toTask(websocketConnectionClient: WebsocketConnectionClient, nextTask: TaskInterface?): TaskInterface {
+    override fun toTask(websocketConnectionClient: WebsocketConnectionClient, nextTask: TaskInterface?, startedFrom: String): TaskInterface {
         return TaskStartScript(scriptName = "",
             websocketConnectionClient = websocketConnectionClient,
-            nextTask = nextTask)
+            nextTask = nextTask, startedFrom = startedFrom)
     }
 
 
     companion object {
         fun fromJson(json: String): MessageStartTaskBaseConvert {
             return Gson().fromJson(json, MessageStartTaskBaseConvert::class.java)
-        }
-
-        fun convertToTaskMessageType(type: String, message: String): TaskMessageInterface {
-            return when (type) {
-                MessageStartTaskScript.TYPE -> MessageStartTaskScript.fromJson(message)
-                // TODO add new task types here
-                else -> MessageStartTaskBaseConvert(type)
-            }
         }
     }
 }

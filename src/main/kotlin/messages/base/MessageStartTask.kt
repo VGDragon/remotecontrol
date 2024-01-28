@@ -23,7 +23,7 @@ class MessageStartTask(
             val taskMessageList: MutableList<TaskMessageInterface> = mutableListOf()
             for (jsonString in jsonStringList) {
                 val messageStartTaskBaseConvert = MessageStartTaskBaseConvert.fromJson(jsonString)
-                taskMessageList.add(MessageStartTaskBaseConvert.convertToTaskMessageType(messageStartTaskBaseConvert.type, jsonString))
+                taskMessageList.add(TaskFunctions.convertToTaskMessageType(messageStartTaskBaseConvert.type, jsonString))
             }
 
             return taskMessageList

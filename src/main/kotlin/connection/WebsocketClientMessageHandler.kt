@@ -15,17 +15,6 @@ class WebsocketClientMessageHandler(val applicationData: ApplicationData) {
     // can be used without creating an instance of the class
     fun handle(ws: WebsocketConnectionClient, message: WebsocketMessageServer) {
         when (message.type) {
-            "ping" -> {
-                println("Client: Ping received")
-                Thread.sleep(1000)
-                ws.send(WebsocketMessageClient(type = "pong", apiKey = applicationData.apiKey, data = "").toJson())
-            }
-
-            "pong" -> {
-                println("Client: Pong received")
-                //Thread.sleep(1000)
-                //ws.send(WebsocketMessageClient(type = "ping", apiKey = applicationData.apiKey, data = "").toJson())
-            }
 
             "message" -> {
                 println("Client: Message received")
@@ -46,20 +35,37 @@ class WebsocketClientMessageHandler(val applicationData: ApplicationData) {
                 ws.addServerInfo(MessageServerResponseCode.fromJson(message.data))
             }
 
-
-
             MessageStartTask.TYPE -> {
-                if(startTaskHandler(ws, MessageStartTask.fromJson(message.data))) {
+                if(startTaskHandler(ws, MessageStartTask.fromJson(message.data), message.sendFrom)) {
                     println("Client: Task started")
-                    ws.send(MessageServerResponseCode.toJson(ServerAnswerStatus.OK, ""))
+                    ws.send(WebsocketMessageClient(
+                        type = MessageServerResponseCode.TYPE,
+                        apiKey = ws.applicationData.apiKey,
+                        sendFrom = ws.computerName,
+                        sendTo = message.sendFrom,
+                        data = MessageServerResponseCode(ServerAnswerStatus.OK, "").toJson()
+                    ).toJson())
                 } else {
                     println("Client: Task not started")
-                    ws.send(MessageServerResponseCode.toJson(ServerAnswerStatus.ERROR, "Task not started."))
+                    ws.send(WebsocketMessageClient(
+                        type = MessageServerResponseCode.TYPE,
+                        apiKey = ws.applicationData.apiKey,
+                        sendFrom = ws.computerName,
+                        sendTo = message.sendFrom,
+                        data = MessageServerResponseCode(ServerAnswerStatus.ERROR, "Task not started.").toJson()
+                    ).toJson())
                 }
             }
             MessageClientScriptList.TYPE -> {
                 println("Client: Script list received")
-                ws.send(MessageServerResponseCode(ServerAnswerStatus.OK, getScriptList()).toJson())
+
+                ws.send(WebsocketMessageClient(
+                    type = MessageServerResponseCode.TYPE,
+                    apiKey = ws.applicationData.apiKey,
+                    sendFrom = ws.computerName,
+                    sendTo = message.sendFrom,
+                    data = MessageServerResponseCode(ServerAnswerStatus.OK, getScriptList()).toJson()
+                ).toJson())
             }
 
             else -> {
@@ -68,11 +74,11 @@ class WebsocketClientMessageHandler(val applicationData: ApplicationData) {
         }
     }
 
-    fun startTaskHandler(ws: WebsocketConnectionClient, messageTaskList: List<TaskMessageInterface>): Boolean {
+    fun startTaskHandler(ws: WebsocketConnectionClient, messageTaskList: List<TaskMessageInterface>, startedFrom: String): Boolean {
         messageTaskList.reversed()
         var lastTask: TaskInterface? = null
         for (taskMessage in messageTaskList) {
-            val task = taskMessage.toTask(ws, lastTask)
+            val task = taskMessage.toTask(ws, lastTask, startedFrom)
             lastTask = task
         }
         if (lastTask == null) {
@@ -98,7 +104,7 @@ class WebsocketClientMessageHandler(val applicationData: ApplicationData) {
             if (!isScriptFile(file)) {
                 continue
             }
-            scriptList.add(file.absolutePath)
+            scriptList.add(file.name)
         }
         return scriptList
     }

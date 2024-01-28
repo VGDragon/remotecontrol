@@ -5,6 +5,7 @@ interface TaskInterface {
     val taskName: String
     var taskThread: Thread?
     val taskThreadLock: Any
+    val startedFrom: String
     fun start()
     fun stop()
 }

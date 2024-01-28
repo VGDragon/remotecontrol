@@ -14,6 +14,7 @@ class MessageServerResponseCode (val status: ServerAnswerStatus, val message: An
         fun toJson(status: ServerAnswerStatus, message: String): String {
             return WebsocketMessageServer(
                 type = TYPE,
+                sendFrom = "server",
                 data = MessageServerResponseCode(
                     status = status,
                     message=message)
