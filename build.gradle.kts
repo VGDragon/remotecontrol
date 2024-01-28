@@ -3,6 +3,10 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 plugins {
     kotlin("jvm")
     id("org.jetbrains.compose")
+    //alias(libs.plugins.androidApplication) apply false
+    //alias(libs.plugins.androidLibrary) apply false
+    //alias(libs.plugins.jetbrainsCompose) apply false
+    //alias(libs.plugins.kotlinMultiplatform) apply false
 }
 
 group = "net.vgdragon"

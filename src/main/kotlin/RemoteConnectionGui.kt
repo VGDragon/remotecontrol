@@ -78,6 +78,10 @@ fun App() {
     var scriptNamesDropdownActive by remember { mutableStateOf(false) }
     var scriptNameSelectedIndex by remember { mutableStateOf(0) }
 
+    // gpt idea
+    // state for triggering GUI update after removing task action data
+    var updateGui by remember { mutableStateOf(1) }
+
     MaterialTheme {
 
         if (newTaskListPopup) {
@@ -143,59 +147,98 @@ fun App() {
                     ) {
                         Text("Close")
                     }
+
                     rowSmallSeperator()
                     Row {
                         Text("Edit Task List")
                     }
                     rowSmallSeperator()
-                    Row {
-                        Text("Name: ${taskListDataList[taskListDataSelectedIndex].taskName}")
+                    //Row {
+                    //    Text("Name: ${taskListDataList[taskListDataSelectedIndex].taskName}")
+                    //}
+                    Row(modifier = Modifier.requiredHeight(20.dp).requiredWidth(500.dp)) {
+                        Text(
+                            if (taskListDataSelectedIndex == -1) {
+                                "Name:      "
+                            } else {
+                                "Name: ${taskListDataList[taskListDataSelectedIndex].taskName}"
+                            },
+                            modifier = Modifier.clickable(onClick = { isTaskListDataDropdownActive = true })
+                                .background(Color.LightGray)
+                        )
+                        DropdownMenu(
+                            expanded = isTaskListDataDropdownActive,
+                            onDismissRequest = { isTaskListDataDropdownActive = false },
+                            modifier = Modifier.height(170.dp)
+                        ) {
+                            if (taskListDataList.isEmpty()) {
+
+                                DropdownMenuItem(
+                                    onClick = {
+                                        taskListDataSelected = "     "
+                                        taskListDataSelectedIndex = -1
+                                        isTaskListDataDropdownActive = false
+                                    },
+                                    modifier = Modifier.background(
+                                        if (taskListDataSelectedIndex == -1) {
+                                            Color.LightGray
+                                        } else {
+                                            Color.White
+                                        }
+                                    )
+                                ) {
+                                    Text("     ")
+                                }
+                            }
+                            taskListDataList.forEachIndexed { index, taskListData ->
+                                DropdownMenuItem(
+                                    onClick = {
+                                        taskListDataSelected = taskListData.taskName
+                                        taskListDataSelectedIndex = index
+                                        isTaskListDataDropdownActive = false
+                                    }, modifier = Modifier.background(
+                                        if (taskListDataSelectedIndex == index) {
+                                            Color.LightGray
+                                        } else {
+                                            Color.White
+                                        }
+                                    )
+                                ) {
+                                    Text(taskListData.taskName)
+                                }
+                            }
+                        }
                     }
                     rowSmallSeperator()
                     Row {
                         Text("Task List")
                     }
-                    // TODO: Test this
-                    taskListDataList[taskListDataSelectedIndex].taskActionDataList.forEach { taskActionData ->
-                        Row {
-                            Text(taskActionData.taskName)
-                            Button(
-                                onClick = {
-                                    // Call the function to remove the item
-                                    taskListDataList[taskListDataSelectedIndex].removeTaskActionData(taskActionData)
-                                    // Trigger recomposition by updating the state variable
-                                    taskListDataList = taskListDataList.toMutableList()
-                                },
-                                contentPadding = PaddingValues(0.dp),
-                                modifier = Modifier
-                                    .padding(start = 4.dp, top = 4.dp, end = 4.dp, bottom = 4.dp)
-                            ) {
-                                Text("Remove", fontSize = 15.sp)
+                    if (updateGui > 0) {
+                        for (taskActionData in taskListDataList[taskListDataSelectedIndex].taskActionDataList) {
+                            rowSmallSeperator()
+                            Row (modifier = Modifier.background(color = Color(200, 0, 0, 20))){
+                                Text(taskActionData.taskName)
+                                Button(
+                                    onClick = {
+                                        val tempTaskListData = taskListDataList[taskListDataSelectedIndex]
+                                        tempTaskListData.taskActionDataList.remove(taskActionData)
+                                        updateGui += 1
+                                        // TODO: gui doesn't update
+                                    },
+                                    contentPadding = PaddingValues(0.dp),
+                                    modifier = Modifier
+                                        .padding(start = 4.dp, top = 4.dp, end = 4.dp, bottom = 4.dp)
+                                ) {
+                                    Text("Remove", fontSize = 15.sp)
+                                }
                             }
                         }
+                        updateGui = 1
                     }
-
-                    //for (taskActionData in taskListDataList[taskListDataSelectedIndex].taskActionDataList) {
-                    //    Row {
-                    //        Text(taskActionData.taskName)
-                    //        Button(
-                    //            onClick = {
-                    //                val tempTaskListData = taskListDataList[taskListDataSelectedIndex]
-                    //                tempTaskListData.removeTaskActionData(taskActionData)
-                    //                //updateGui = !updateGui
-                    //                // TODO: gui doesn't update
-                    //            },
-                    //            contentPadding = PaddingValues(0.dp),
-                    //            modifier = Modifier
-                    //                .padding(start = 4.dp, top = 4.dp, end = 4.dp, bottom = 4.dp)
-                    //        ) {
-                    //            Text("Remove", fontSize = 15.sp)
-                    //        }
-                    //    }
-                    //}
                     rowSmallSeperator()
                     Row {
                         Button(
+                            enabled = selectedClient.isNotBlank(),
                             onClick = {
                                 taskEntryData.clear()
                                 //taskEntryData["type"] = entryTypeList[entryTypeSelectedIndex].first.get()
@@ -206,6 +249,29 @@ fun App() {
                             }) {
                             Text("Add task")
                         }
+                    }
+                    rowSmallSeperator()
+                    // client list
+                    if (websocketConnectionClient != null) {
+                        Row {
+                            Column {
+                                Text("Client List:", fontSize = 20.sp)
+                                for (clientName in websocketConnectionClient?.getExecClientListVariable()
+                                    ?: listOf()) {
+                                    Row {
+                                        Button(
+                                            enabled = !selectedClient.equals(clientName),
+                                            onClick = {
+                                                selectedClient = clientName
+                                            }) {
+                                            Text(clientName)
+                                        }
+                                    }
+                                }
+
+                            }
+                        }
+
                     }
                     rowSmallSeperator()
                     Row {
@@ -235,6 +301,7 @@ fun App() {
                             addTaskEntry = false
                             editTaskListPopup = true
                             applicationData.saveToFile()
+                            updateGui += 1
                         }) {
                         Text("Close")
                     }
@@ -474,103 +541,117 @@ fun App() {
                         }
                     }
                     rowSmallSeperator()
-
-                    Row(modifier = Modifier.requiredHeight(20.dp).requiredWidth(500.dp)) {
-                        Text(
-                            if (taskListDataSelectedIndex == -1) {
-                                "     "
-                            } else {
-                                taskListDataList[taskListDataSelectedIndex].taskName
-                            },
-                            modifier = Modifier.clickable(onClick = { isTaskListDataDropdownActive = true })
-                                .background(Color.LightGray)
-                        )
-                        DropdownMenu(
-                            expanded = isTaskListDataDropdownActive,
-                            onDismissRequest = { isTaskListDataDropdownActive = false },
-                            modifier = Modifier.height(170.dp)
-                        ) {
-                            if (taskListDataList.isEmpty()) {
-
-                                DropdownMenuItem(
-                                    onClick = {
-                                        taskListDataSelected = "     "
-                                        taskListDataSelectedIndex = -1
-                                        isTaskListDataDropdownActive = false
-                                    },
-                                    modifier = Modifier.background(
-                                        if (taskListDataSelectedIndex == -1) {
-                                            Color.LightGray
-                                        } else {
-                                            Color.White
-                                        }
-                                    )
-                                ) {
-                                    Text("     ")
-                                }
-                            }
-                            taskListDataList.forEachIndexed { index, taskListData ->
-                                DropdownMenuItem(
-                                    onClick = {
-                                        taskListDataSelected = taskListData.taskName
-                                        taskListDataSelectedIndex = index
-                                        isTaskListDataDropdownActive = false
-                                    }, modifier = Modifier.background(
-                                        if (taskListDataSelectedIndex == index) {
-                                            Color.LightGray
-                                        } else {
-                                            Color.White
-                                        }
-                                    )
-                                ) {
-                                    Text(taskListData.taskName)
-                                }
-                            }
-                        }
-                    }
-                    rowSmallSeperator()
-                    Row {
-                        Column {
-                            // create new task button
-                            Button(
-                                onClick = {
-                                    newTaskListPopup = true
-                                }) {
-                                Text("New Task List")
-                            }
-                        }
-                        Column {
-                            // create new task button
-                            Button(
-                                onClick = {
-                                    editTaskListPopup = true
-                                }) {
-                                Text("Edit Task List")
-                            }
-                        }
-                    }
-                    rowSmallSeperator()
-                    // client list
-                    if (websocketConnectionClient != null) {
+                    if (disconnectButtonActive.value) {
+                        //Row(modifier = Modifier.requiredHeight(20.dp).requiredWidth(500.dp)) {
+                        //    Text(
+                        //        if (taskListDataSelectedIndex == -1) {
+                        //            "     "
+                        //        } else {
+                        //            taskListDataList[taskListDataSelectedIndex].taskName
+                        //        },
+                        //        modifier = Modifier.clickable(onClick = { isTaskListDataDropdownActive = true })
+                        //            .background(Color.LightGray)
+                        //    )
+                        //    DropdownMenu(
+                        //        expanded = isTaskListDataDropdownActive,
+                        //        onDismissRequest = { isTaskListDataDropdownActive = false },
+                        //        modifier = Modifier.height(170.dp)
+                        //    ) {
+                        //        if (taskListDataList.isEmpty()) {
+                        //            DropdownMenuItem(
+                        //                onClick = {
+                        //                    taskListDataSelected = "     "
+                        //                    taskListDataSelectedIndex = -1
+                        //                    isTaskListDataDropdownActive = false
+                        //                },
+                        //                modifier = Modifier.background(
+                        //                    if (taskListDataSelectedIndex == -1) {
+                        //                        Color.LightGray
+                        //                    } else {
+                        //                        Color.White
+                        //                    }
+                        //                )
+                        //            ) {
+                        //                Text("     ")
+                        //            }
+                        //        }
+                        //        taskListDataList.forEachIndexed { index, taskListData ->
+                        //            DropdownMenuItem(
+                        //                onClick = {
+                        //                    taskListDataSelected = taskListData.taskName
+                        //                    taskListDataSelectedIndex = index
+                        //                    isTaskListDataDropdownActive = false
+                        //                }, modifier = Modifier.background(
+                        //                    if (taskListDataSelectedIndex == index) {
+                        //                        Color.LightGray
+                        //                    } else {
+                        //                        Color.White
+                        //                    }
+                        //                )
+                        //            ) {
+                        //                Text(taskListData.taskName)
+                        //            }
+                        //        }
+                        //    }
+                        //}
+                        rowSmallSeperator()
                         Row {
                             Column {
-                                Text("Client List:", fontSize = 20.sp)
-                                for (clientName in websocketConnectionClient?.getExecClientListVariable() ?: listOf()) {
-                                    Row {
-                                        Button(
-                                            enabled = selectedClient.isBlank(),
-                                            onClick = {
-                                                selectedClient = clientName
-                                            }) {
-                                            Text(clientName)
-                                        }
-                                    }
+                                // create new task button
+                                Button(
+                                    onClick = {
+                                        newTaskListPopup = true
+                                    }) {
+                                    Text("New Task List")
                                 }
-
+                            }
+                            Column {
+                                // create new task button
+                                Button(
+                                    onClick = {
+                                        editTaskListPopup = true
+                                        updateGui += 1
+                                    }) {
+                                    Text("Edit Task List")
+                                }
                             }
                         }
-
-
+                       //rowSmallSeperator()
+                       //// client list
+                       //if (websocketConnectionClient != null) {
+                       //    Row {
+                       //        Column {
+                       //            Text("Client List:", fontSize = 20.sp)
+                       //            for (clientName in websocketConnectionClient?.getExecClientListVariable()
+                       //                ?: listOf()) {
+                       //                Row {
+                       //                    Button(
+                       //                        enabled = selectedClient.equals(clientName),
+                       //                        onClick = {
+                       //                            selectedClient = clientName
+                       //                        }) {
+                       //                        Text(clientName)
+                       //                    }
+                       //                }
+                       //            }
+                       //        }
+                       //    }
+                       //}
+                        rowBigSeperator()
+                        taskListDataList.forEach {
+                            Row {
+                                Button(
+                                    onClick = {
+                                        it.startTaskList(ws = websocketConnectionClient!!)
+                                    },
+                                    contentPadding = PaddingValues(0.dp),
+                                    modifier = Modifier
+                                        .padding(start = 2.dp, top = 2.dp, end = 2.dp, bottom = 2.dp)
+                                ) {
+                                    Text(it.taskName, fontSize = 15.sp)
+                                }
+                            }
+                        }
                     }
 
                 }
@@ -612,7 +693,7 @@ fun App() {
                 addTaskEntry = false
                 editTaskListPopup = true
             } else {
-                taskListDataList[taskListDataSelectedIndex].addTaskActionData(
+                taskListDataList[taskListDataSelectedIndex].taskActionDataList.add(
                     TaskActionData(
                         clientName = selectedClient,
                         taskName = newTaskEntryName,
@@ -624,6 +705,7 @@ fun App() {
                 addTaskEntry = false
                 editTaskListPopup = true
             }
+            updateGui += 1
             taskEntryData.clear()
         }
         if (toSave) {

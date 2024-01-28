@@ -5,4 +5,5 @@ class TaskActionData(
     val taskName: String = "",
     val taskData: String = ""
 ) {
+
 }

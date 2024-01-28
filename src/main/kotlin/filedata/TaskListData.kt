@@ -1,28 +1,21 @@
 package filedata
 
+import TaskFunctions
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshots.SnapshotMutableState
 import com.google.gson.Gson
+import connection.WebsocketConnectionClient
+import messages.WebsocketMessageClient
+import messages.base.MessageStartTask
 
 class TaskListData(
     val fileName: String = "",
     var taskName: String = "",
     var taskActionDataList: MutableList<TaskActionData> = mutableListOf()
 ) {
-    val taskActionDataListState: MutableState<List<TaskActionData>> = mutableStateOf(taskActionDataList)
-    fun removeTaskActionData(itemToRemove: TaskActionData) {
-        taskActionDataList.remove(itemToRemove)
-        // Update the state to trigger recomposition
-        taskActionDataListState.value = taskActionDataList.toList()
-    }
-    fun addTaskActionData(itemToAdd: TaskActionData) {
-        taskActionDataList.add(itemToAdd)
-        // Update the state to trigger recomposition
-        taskActionDataListState.value = taskActionDataList.toList()
-    }
     fun toJson(): String {
         return Gson().toJson(this)
     }
@@ -41,6 +34,27 @@ class TaskListData(
         val file = java.io.File(GlobalVariables.taskFolder, fileName)
         file.writeText(this.toJson())
         return this
+    }
+
+    fun startTaskList(ws: WebsocketConnectionClient) {
+        val taskList = taskActionDataList.toMutableList()
+        if (taskList.isEmpty()) {
+            return
+        }
+        val sendTo = taskList[0].clientName
+        val taskMessageList: MutableList<String> = mutableListOf()
+        for (task in taskList) {
+            taskMessageList.add(task.taskData)
+        }
+        ws.send(
+            WebsocketMessageClient(
+                type = MessageStartTask.TYPE,
+                apiKey = ws.applicationData.apiKey,
+                sendFrom = ws.computerName,
+                sendTo = sendTo,
+                data = Gson().toJson(taskMessageList)
+            ).toJson()
+        )
     }
 
     companion object {

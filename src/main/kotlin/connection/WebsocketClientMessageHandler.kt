@@ -2,6 +2,7 @@ package connection
 
 import filedata.ApplicationData
 import GlobalVariables
+import TaskFunctions
 import interfaces.TaskInterface
 import interfaces.TaskMessageInterface
 import messages.*
@@ -36,7 +37,7 @@ class WebsocketClientMessageHandler(val applicationData: ApplicationData) {
             }
 
             MessageStartTask.TYPE -> {
-                if(startTaskHandler(ws, MessageStartTask.fromJson(message.data), message.sendFrom)) {
+                if(TaskFunctions.startTaskHandler(ws, MessageStartTask.fromJson(message.data), message.sendFrom)) {
                     println("Client: Task started")
                     ws.send(WebsocketMessageClient(
                         type = MessageServerResponseCode.TYPE,
@@ -72,20 +73,6 @@ class WebsocketClientMessageHandler(val applicationData: ApplicationData) {
                 println("Client: Unknown message type received")
             }
         }
-    }
-
-    fun startTaskHandler(ws: WebsocketConnectionClient, messageTaskList: List<TaskMessageInterface>, startedFrom: String): Boolean {
-        messageTaskList.reversed()
-        var lastTask: TaskInterface? = null
-        for (taskMessage in messageTaskList) {
-            val task = taskMessage.toTask(ws, lastTask, startedFrom)
-            lastTask = task
-        }
-        if (lastTask == null) {
-            return false
-        }
-        lastTask.start()
-        return true
     }
 
     fun getScriptList() : List<String> {

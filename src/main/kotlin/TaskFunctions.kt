@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import connection.WebsocketConnectionClient
 import filedata.ApplicationData
+import interfaces.TaskInterface
 import interfaces.TaskMessageInterface
 import messages.WebsocketMessageClient
 import messages.base.client.MessageClientClientList
@@ -46,6 +47,19 @@ class TaskFunctions {
                 Triple(MessageStartTaskScript::TYPE, MessageStartTaskScript::fromMap, null),
                 Triple(MessageStartTaskScript::TYPE, MessageStartTaskScript::fromMap, null)
             )
+        }
+        fun startTaskHandler(ws: WebsocketConnectionClient, messageTaskList: List<TaskMessageInterface>, startedFrom: String): Boolean {
+            messageTaskList.reversed()
+            var lastTask: TaskInterface? = null
+            for (taskMessage in messageTaskList) {
+                val task = taskMessage.toTask(ws, lastTask, startedFrom)
+                lastTask = task
+            }
+            if (lastTask == null) {
+                return false
+            }
+            lastTask.start()
+            return true
         }
 
     }
