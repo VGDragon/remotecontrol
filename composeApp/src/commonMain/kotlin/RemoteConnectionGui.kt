@@ -1,4 +1,3 @@
-import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
@@ -10,7 +9,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.application
 import connection.WebsocketConnectionClient
+import connection.WebsocketConnectionServer
 import filedata.ApplicationData
 import filedata.TaskActionData
 import filedata.TaskListData
@@ -20,10 +22,12 @@ import messages.base.client.MessageClientRegister
 import messages.base.client.MessageClientRemoveClientBridge
 import messages.base.client.MessageClientScriptList
 import messages.tasks.MessageStartTaskScript
+import org.jetbrains.compose.resources.ExperimentalResourceApi
+import java.io.File
 
 
+@OptIn(ExperimentalResourceApi::class)
 @Composable
-@Preview
 fun App() {
     var connectButtonText by remember { mutableStateOf("Connect") }
     var disconnectButtonText by remember { mutableStateOf("Disconnect") }
@@ -719,7 +723,6 @@ fun App() {
 }
 
 @Composable
-@Preview
 fun rowBigSeperator() {
     Row(modifier = Modifier.height(10.dp)) {
 
@@ -727,7 +730,6 @@ fun rowBigSeperator() {
 }
 
 @Composable
-@Preview
 fun rowSmallSeperator() {
     Row(modifier = Modifier.height(2.dp)) {
 
@@ -740,4 +742,53 @@ fun connectToServer(applicationData: ApplicationData): WebsocketConnectionClient
     websocketConnectionClient.connect()
     websocketConnectionClient.waitForConnection()
     return websocketConnectionClient
+}
+
+
+fun main(args: Array<String>) {
+    val argumentList = mutableListOf<String>()
+    val argumentMap = mutableMapOf<String, String>()
+    argumentMap["server"] = "false"
+    argumentMap["client"] = "true"
+    argumentMap["port"] = "8088"
+    argumentMap["help"] = "false"
+    argumentMap["address"] = "127.0.0.1"
+    argumentMap["exec"] = "false"
+
+    var lastOption = ""
+    for (arg in args) {
+        if (arg.startsWith("--")) {
+            lastOption = arg.substring(2)
+            argumentMap[lastOption] = "true"
+        } else {
+            if (lastOption == "") {
+                argumentList.add(arg)
+            } else {
+                argumentMap[lastOption] = arg
+            }
+        }
+    }
+
+    if (argumentMap["server"] == "true") {
+        val applicationData = ApplicationData.fromFile()
+        val websocketConnectionServer = WebsocketConnectionServer(applicationData)
+        websocketConnectionServer.start()
+        while (true) {
+            Thread.sleep(1000)
+        }
+    } else if(argumentMap["exec"] == "true" && argumentMap["client"] == "true"){
+        val scriptFolderFile = File(GlobalVariables.scriptFolder)
+        if (!scriptFolderFile.exists()){
+            scriptFolderFile.mkdirs()
+        }
+        val applicationData = ApplicationData.fromFile()
+        val websocketConnectionClient = WebsocketConnectionClient(applicationData, argumentMap["exec"] == "true")
+        websocketConnectionClient.connectAndRegister()
+    } else if(argumentMap["client"] == "true") {
+        application {
+            Window(onCloseRequest = ::exitApplication) {
+                App()
+            }
+        }
+    }
 }

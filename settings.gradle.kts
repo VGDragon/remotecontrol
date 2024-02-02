@@ -1,14 +1,15 @@
+rootProject.name = "remotecontrol"
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
 pluginManagement {
     repositories {
-        gradlePluginPortal()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-    }
-
-    plugins {
-        kotlin("jvm").version(extra["kotlin.version"] as String)
-        id("org.jetbrains.compose").version(extra["compose.version"] as String)
+        google()
+        gradlePluginPortal()
+        mavenCentral()
     }
 }
+
 dependencyResolutionManagement {
     repositories {
         google()
@@ -17,5 +18,4 @@ dependencyResolutionManagement {
     }
 }
 
-include(":scr")
-rootProject.name = "remotecontrol"
+include(":composeApp")

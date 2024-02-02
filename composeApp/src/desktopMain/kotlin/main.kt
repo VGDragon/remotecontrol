@@ -1,3 +1,5 @@
+import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import connection.WebsocketConnectionClient
@@ -5,19 +7,30 @@ import connection.WebsocketConnectionServer
 import filedata.ApplicationData
 import java.io.File
 
+
 fun main(args: Array<String>) {
-    val argumentPair= phaseArguments(args)
-    val argumentList = argumentPair.first
-    val argumentMap = argumentPair.second
+    val argumentList = mutableListOf<String>()
+    val argumentMap = mutableMapOf<String, String>()
+    argumentMap["server"] = "false"
+    argumentMap["client"] = "true"
+    argumentMap["port"] = "8088"
+    argumentMap["help"] = "false"
+    argumentMap["address"] = "127.0.0.1"
+    argumentMap["exec"] = "false"
 
-
-
-    //var isServer = false
-    //if (args.isNotEmpty()) {
-    //    if (args[0] == "server") {
-    //        isServer = true
-    //    }
-    //}
+    var lastOption = ""
+    for (arg in args) {
+        if (arg.startsWith("--")) {
+            lastOption = arg.substring(2)
+            argumentMap[lastOption] = "true"
+        } else {
+            if (lastOption == "") {
+                argumentList.add(arg)
+            } else {
+                argumentMap[lastOption] = arg
+            }
+        }
+    }
 
     if (argumentMap["server"] == "true") {
         val applicationData = ApplicationData.fromFile()
@@ -67,4 +80,11 @@ fun phaseArguments(args: Array<String>) : Pair<List<String>, Map<String, String>
         }
     }
     return Pair(arguments, options)
+}
+
+
+@Preview
+@Composable
+fun AppDesktopPreview() {
+    App()
 }
