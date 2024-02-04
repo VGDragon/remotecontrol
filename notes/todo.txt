@@ -1,0 +1,5 @@
+add task:
+wait until client with the given name is connected
+
+edits:
+remove the "updateGui" variable and replace the lists with maps

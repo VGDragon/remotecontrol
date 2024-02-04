@@ -7,6 +7,9 @@ class ApplicationData{
     var apiKey: String = ""
     var address: String = "localhost"
     var port: Int = 8080
+    var isServer: Boolean = false
+    var isClient: Boolean = true
+    var exec: Boolean = false
     init {
         if (apiKey.isEmpty()){
             // create a new api key
@@ -21,7 +24,7 @@ class ApplicationData{
 
     fun saveToFile(): ApplicationData {
         // save the api key to a file
-        val file = java.io.File(GlobalVariables.applicationDataFile)
+        val file = java.io.File(GlobalVariables.applicationDataFile())
         file.writeText(this.toJson())
         return this
     }
@@ -30,7 +33,7 @@ class ApplicationData{
             return Gson().fromJson(json, ApplicationData::class.java)
         }
         fun fromFile(): ApplicationData {
-            val file = java.io.File(GlobalVariables.applicationDataFile)
+            val file = java.io.File(GlobalVariables.applicationDataFile())
             if (file.exists()){
                 val json = file.readText()
                 return fromJson(json)

@@ -1,15 +1,10 @@
 package filedata
 
-import TaskFunctions
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshots.SnapshotMutableState
 import com.google.gson.Gson
 import connection.WebsocketConnectionClient
 import messages.WebsocketMessageClient
 import messages.base.MessageStartTask
+import messages.tasks.MessageStartTaskSendTask
 
 class TaskListData(
     val fileName: String = "",
@@ -21,17 +16,17 @@ class TaskListData(
     }
 
     fun fileExists(): Boolean {
-        val file = java.io.File(GlobalVariables.taskFolder, fileName)
+        val file = java.io.File(GlobalVariables.taskFolder(), fileName)
         return file.exists()
     }
 
     fun saveToFile(): TaskListData {
         // save the api key to a file
-        val folder = java.io.File(GlobalVariables.taskFolder)
+        val folder = java.io.File(GlobalVariables.taskFolder())
         if (!folder.exists()) {
             folder.mkdirs()
         }
-        val file = java.io.File(GlobalVariables.taskFolder, fileName)
+        val file = java.io.File(GlobalVariables.taskFolder(), fileName)
         file.writeText(this.toJson())
         return this
     }
@@ -41,17 +36,38 @@ class TaskListData(
         if (taskList.isEmpty()) {
             return
         }
-        val sendTo = taskList[0].clientName
+        taskList.reverse()
         val taskMessageList: MutableList<String> = mutableListOf()
-        for (task in taskList) {
-            taskMessageList.add(task.taskData)
+
+        var lastClientName = taskList[0].clientName
+        for (taskActionData in taskList) {
+            if (taskActionData.clientName.equals(lastClientName)) {
+                taskMessageList.add(0, taskActionData.taskData)
+                continue
+            }
+            val sendTo = lastClientName
+            val taskMessageListCopy = taskMessageList.toMutableList()
+            taskMessageList.clear()
+
+            // TODO: create send task message
+            taskMessageList.add(0,
+                MessageStartTaskSendTask(
+                    type = MessageStartTaskSendTask.TYPE,
+                    clientTo = taskActionData.clientName,
+                    sendMessageTo = sendTo,
+                    messageToSend = Gson().toJson(taskMessageListCopy)
+                ).toJson()
+            )
+            lastClientName = taskActionData.clientName
+            taskMessageList.add(0, taskActionData.taskData)
         }
+
         ws.send(
             WebsocketMessageClient(
                 type = MessageStartTask.TYPE,
                 apiKey = ws.applicationData.apiKey,
                 sendFrom = ws.computerName,
-                sendTo = sendTo,
+                sendTo = lastClientName,
                 data = Gson().toJson(taskMessageList)
             ).toJson()
         )
@@ -59,7 +75,7 @@ class TaskListData(
 
     companion object {
         fun getTaskListDataFiles(): MutableList<TaskListData> {
-            val folder = java.io.File(GlobalVariables.taskFolder)
+            val folder = java.io.File(GlobalVariables.taskFolder())
             if (!folder.exists()) {
                 folder.mkdirs()
             }
@@ -74,12 +90,13 @@ class TaskListData(
             }
             return taskListDataList
         }
+
         fun fromJson(json: String): TaskListData {
             return Gson().fromJson(json, TaskListData::class.java)
         }
 
         fun fromFile(fileName: String): TaskListData {
-            val file = java.io.File(GlobalVariables.taskFolder, fileName)
+            val file = java.io.File(GlobalVariables.taskFolder(), fileName)
             if (file.exists()) {
                 val json = file.readText()
                 return fromJson(json)

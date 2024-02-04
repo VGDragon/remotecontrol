@@ -6,7 +6,8 @@ import interfaces.TaskInterface
 import interfaces.TaskMessageInterface
 import tasks.TaskStartScript
 
-class MessageStartTaskBaseConvert(override val type: String) : TaskMessageInterface {
+class MessageStartTaskBaseConvert(override val type: String,
+                                  override val clientTo: String) : TaskMessageInterface {
     override fun toJson(): String {
         return Gson().toJson(this)
     }

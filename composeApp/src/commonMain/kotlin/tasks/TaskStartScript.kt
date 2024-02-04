@@ -1,6 +1,5 @@
 package tasks
 
-import GlobalVariables
 import connection.WebsocketConnectionClient
 import interfaces.TaskInterface
 import java.io.File
@@ -24,7 +23,7 @@ class TaskStartScript(
             taskThread = Thread {
                 var process: Process? = null
                 try {
-                    val scriptFile = File(GlobalVariables.scriptFolder, scriptName)
+                    val scriptFile = File(GlobalVariables.scriptFolder(), scriptName)
                     val osName = System.getProperty("os.name").lowercase(Locale.getDefault())
                     if (osName.contains("windows")) {
                         process = Runtime.getRuntime()

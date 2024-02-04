@@ -41,7 +41,7 @@ class WebsocketConnectionClient : WebSocketClient {
         this.websocketClientMessageHandler = WebsocketClientMessageHandler(applicationData)
         this.executeTask = executeTask
         this.isConnected = false
-        this.computerName = System.getenv("COMPUTERNAME")
+        this.computerName = GlobalVariables.computerName
         if (this.executeTask){
             computerName += "_executable"
         }
@@ -101,6 +101,11 @@ class WebsocketConnectionClient : WebSocketClient {
         }
     }
 
+    fun stopConnection() {
+        setKeepRunning(false)
+        this.close()
+    }
+
     override fun onOpen(p0: ServerHandshake?) {
         println("Client: Opened connection")
         setIsConnected(true)
@@ -117,7 +122,9 @@ class WebsocketConnectionClient : WebSocketClient {
     override fun onClose(p0: Int, p1: String?, p2: Boolean) {
         println("Client: Closed connection")
         Thread.sleep(1000)
-        connect()
+        if (getKeepRunning()) {
+            connect()
+        }
     }
 
     override fun onError(p0: Exception?) {

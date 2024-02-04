@@ -3,15 +3,9 @@ import androidx.compose.ui.window.application
 import connection.WebsocketConnectionClient
 import connection.WebsocketConnectionServer
 import filedata.ApplicationData
-import messages.*
-import messages.base.server.MessageServerClientList
-import messages.base.MessageStartTask
-import messages.base.ServerAnswerStatus
-import messages.base.client.MessageClientClientList
+import interfaces.TaskMessageInterface
 import messages.tasks.MessageStartTaskScript
 import java.io.File
-import kotlin.reflect.cast
-import kotlin.reflect.safeCast
 
 class testServer {
     fun websocketServer(): WebsocketConnectionServer {
@@ -47,7 +41,7 @@ fun startServerWithGuiTest(){
     Thread.sleep(3000)
 
 
-    val scriptFolderFile = File(GlobalVariables.scriptFolder)
+    val scriptFolderFile = File(GlobalVariables.scriptFolder())
     if (!scriptFolderFile.exists()){
         scriptFolderFile.mkdirs()
     }
@@ -63,18 +57,33 @@ fun startServerWithGuiTest(){
     }
 }
 
-fun testingScript(){
+fun testingServerScript(){
+    GlobalVariables.computerName = System.getenv("COMPUTERNAME")
     // storing a class in a variable and create a class object from it
-    var functionVariableMap: Map<String, String> = mapOf("type" to "testScript", "scriptName" to "testScript")
-    var functionvariableList: List<String> = listOf("type", "scriptName")
-    var messageStartTaskBaseConvertClass = Pair(
-        MessageStartTaskScript::toJson, MessageStartTaskScript::fromMap)
+    val applicationData = ApplicationData.fromFile()
+    val ws_server = WebsocketConnectionServer(applicationData)
+    ws_server.start()
+    Thread.sleep(3000)
+
+    //val ws_client_exec = WebsocketConnectionClient(applicationData, true)
+    //val ws_client = WebsocketConnectionClient(applicationData)
+    //ws_client_exec.connectAndRegister(doJoin = false)
+    //ws_client.connectAndRegister(doJoin = false)
+
 
     //var messageStartTaskBaseConvertObject = messageStartTaskBaseConvertClass.first(functionVariableMap)
+    //task list
+    val taskList = mutableListOf<TaskMessageInterface>()
+    taskList.add(MessageStartTaskScript(type = MessageStartTaskScript.TYPE, clientTo = GlobalVariables.computerName + "_executable", scriptName = "testScript"))
+    taskList.add(MessageStartTaskScript(type = MessageStartTaskScript.TYPE, clientTo = "Hearuhi", scriptName = "testScript"))
+    //TaskFunctions.startTaskHandler(ws_client_exec, taskList, GlobalVariables.computerName)
     println()
+    //ws_client.stopConnection()
+    //ws_client_exec.stopConnection()
+    //ws_server.stop()
 }
 
 fun main(args: Array<String>) {
-    //testingScript()
-    startServerWithGuiTest()
+    testingServerScript()
+    //startServerWithGuiTest()
 }

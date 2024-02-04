@@ -10,6 +10,7 @@ plugins {
 repositories {
     mavenCentral()
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+    maven("https://oss.sonatype.org/content/repositories/snapshots/")
     google()
 }
 
@@ -22,7 +23,12 @@ kotlin {
             }
         }
     }
-
+    repositories {
+        mavenCentral()
+        maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+        //maven("https://oss.sonatype.org/content/repositories/snapshots/")
+        google()
+    }
     jvm("desktop")
 
 
@@ -45,7 +51,7 @@ kotlin {
             // compose.desktop.currentOs should be used in launcher-sourceSet
             // (in a separate module for demo project and in testMain).
             // With compose.desktop.common you will also lose @Preview functionality
-           // implementation(compose.desktop.currentOs)
+            // implementation(compose.desktop.currentOs)
             // add javax.websocket
             implementation("com.squareup.okhttp3:okhttp:4.9.0")
             implementation("com.neovisionaries:nv-websocket-client:2.3")
@@ -55,6 +61,9 @@ kotlin {
             // https://mvnrepository.com/artifact/com.github.salomonbrys.kotson/kotson
             //runtimeOnly("com.github.salomonbrys.kotson:kotson:2.5.0")
             //implementation("com.squareup.moshi:moshi:1.14.0")
+            //implementation("me.sujanpoudel.mputils:platform-identifier:0.1.1")
+            //implementation("me.sujanpoudel.mputils:context-provider:0.1.1")
+            implementation("me.sujanpoudel.mputils:paths:0.1.1")
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
@@ -72,7 +81,7 @@ android {
     sourceSets["main"].resources.srcDirs("src/commonMain/resources")
 
     defaultConfig {
-        applicationId = "org.example.project"
+        applicationId = "net.vgdragon.remotecontrol"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
@@ -96,10 +105,13 @@ android {
         debugImplementation(libs.compose.ui.tooling)
     }
 }
+dependencies {
+    implementation(libs.play.services.location)
+}
 
 compose.desktop {
     application {
-        mainClass = "RemoteConnectionGuiKt"
+        mainClass = "MainKt"
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)

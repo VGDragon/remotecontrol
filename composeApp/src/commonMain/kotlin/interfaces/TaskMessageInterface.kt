@@ -5,6 +5,7 @@ import connection.WebsocketConnectionClient
 
 interface TaskMessageInterface {
     val type: String
+    val clientTo: String
     fun toJson(): String
     fun toTask(websocketConnectionClient: WebsocketConnectionClient, nextTask: TaskInterface?, startedFrom: String): TaskInterface
 

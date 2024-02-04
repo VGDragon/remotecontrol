@@ -76,7 +76,7 @@ class WebsocketClientMessageHandler(val applicationData: ApplicationData) {
     }
 
     fun getScriptList() : List<String> {
-        val scriptFolderFile = File(GlobalVariables.scriptFolder)
+        val scriptFolderFile = File(GlobalVariables.scriptFolder())
         if (!scriptFolderFile.exists()) {
             return listOf()
         }
