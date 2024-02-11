@@ -18,6 +18,7 @@ import messages.base.client.MessageClientRegister
 import messages.base.client.MessageClientRemoveClientBridge
 import messages.base.client.MessageClientScriptList
 import messages.tasks.MessageStartTaskScript
+import messages.tasks.MessageStartTaskWaitUntilClientConnected
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 
 
@@ -58,7 +59,10 @@ fun App() {
 
     // task list data
     // change to map
-    var taskListDataList by remember { mutableStateOf(TaskListData.getTaskListDataFiles()) }
+
+    var taskListDataMap by remember { mutableStateOf(
+        TaskListData.getTaskListDataFiles().mapIndexed { index: Int, s: TaskListData -> index  to s }.toMutableStateMap()) }
+    //var taskListDataList by remember { mutableStateOf(TaskListData.getTaskListDataFiles()) }
     var taskListDataSelected by remember { mutableStateOf("") }
     var taskListDataSelectedIndex by remember { mutableStateOf(0) }
     var isTaskListDataDropdownActive by remember { mutableStateOf(false) }
@@ -79,6 +83,9 @@ fun App() {
     var scriptNames: MutableList<String> = mutableListOf()
     var scriptNamesDropdownActive by remember { mutableStateOf(false) }
     var scriptNameSelectedIndex by remember { mutableStateOf(0) }
+
+    var waitUntilClientOnlineSelectedName by remember { mutableStateOf("") }
+    var waitUntilClientOnlineDropdownActive by remember { mutableStateOf(false) }
 
     // gpt idea
     // state for triggering GUI update after removing task action data
@@ -168,7 +175,7 @@ fun App() {
                             if (taskListDataSelectedIndex == -1) {
                                 "Name:      "
                             } else {
-                                "Name: ${taskListDataList[taskListDataSelectedIndex].taskName}"
+                                "Name: ${taskListDataMap[taskListDataSelectedIndex]!!.taskName}"
                             },
                             modifier = Modifier.clickable(onClick = { isTaskListDataDropdownActive = true })
                                 .background(Color.LightGray)
@@ -178,7 +185,7 @@ fun App() {
                             onDismissRequest = { isTaskListDataDropdownActive = false },
                             modifier = Modifier.height(170.dp)
                         ) {
-                            if (taskListDataList.isEmpty()) {
+                            if (taskListDataMap.isEmpty()) {
 
                                 DropdownMenuItem(
                                     onClick = {
@@ -197,7 +204,7 @@ fun App() {
                                     Text("     ")
                                 }
                             }
-                            taskListDataList.forEachIndexed { index, taskListData ->
+                            taskListDataMap.forEach { (index, taskListData) ->
                                 DropdownMenuItem(
                                     onClick = {
                                         taskListDataSelected = taskListData.taskName
@@ -222,14 +229,14 @@ fun App() {
                     }
 
                     if (updateGui > 0) {
-                        for (taskActionData in taskListDataList[taskListDataSelectedIndex].taskActionDataList) {
+                        for (taskActionData in taskListDataMap[taskListDataSelectedIndex]!!.taskActionDataList) {
                             rowSmallSeperator()
                             Row (modifier = Modifier.background(color = Color(200, 0, 0, 20))){
                                 Text(taskActionData.taskName)
                                 Button(
                                     onClick = {
-                                        val tempTaskListData = taskListDataList[taskListDataSelectedIndex]
-                                        tempTaskListData.taskActionDataList.remove(taskActionData)
+                                        val tempTaskListData = taskListDataMap[taskListDataSelectedIndex]
+                                        tempTaskListData!!.taskActionDataList.remove(taskActionData)
                                         updateGui += 1
                                         // TODO: gui doesn't update
                                     },
@@ -263,6 +270,18 @@ fun App() {
                     if (websocketConnectionClient != null) {
                         Row {
                             Column {
+
+                                websocketConnectionClient!!.send(
+                                    WebsocketMessageClient(
+                                        type = MessageClientClientList.TYPE,
+                                        apiKey = applicationData.apiKey,
+                                        sendFrom = "",
+                                        sendTo = "",
+                                        data = ""
+                                    )
+                                        .toJson()
+                                )
+                                websocketConnectionClient!!.waitForResponse()
                                 Text("Client List:", fontSize = 20.sp)
                                 for (clientName in websocketConnectionClient?.getExecClientListVariable()
                                     ?: listOf()) {
@@ -450,6 +469,91 @@ fun App() {
                                 }
                             }
                         }
+                        MessageStartTaskWaitUntilClientConnected.TYPE -> {
+                            websocketConnectionClient!!.send(
+                                WebsocketMessageClient(
+                                    type = MessageClientRegister.TYPE,
+                                    apiKey = applicationData.apiKey,
+                                    sendFrom = "",
+                                    sendTo = "",
+                                    data = MessageClientRegister(
+                                        clientName = websocketConnectionClient!!.computerName,
+                                        isExecutable = false
+                                    ).toJson()
+                                )
+                                    .toJson()
+                            )
+                            websocketConnectionClient!!.waitForResponse()
+                            val clientList = websocketConnectionClient!!.getExecClientListVariable()
+                            if (clientList.isEmpty()) {
+                                waitUntilClientOnlineSelectedName = ""
+                            } else if (waitUntilClientOnlineSelectedName.isBlank()) {
+                                waitUntilClientOnlineSelectedName = clientList[0]
+                            }
+                            // TODO: add client list
+                            Row {
+                                Text("Client to wait for: ")
+                                Text(waitUntilClientOnlineSelectedName, modifier = Modifier.clickable(
+                                    onClick = {
+                                        waitUntilClientOnlineDropdownActive = true
+                                    })
+                                    .background(Color.LightGray))
+                                DropdownMenu(
+                                    expanded = waitUntilClientOnlineDropdownActive,
+                                    onDismissRequest = { waitUntilClientOnlineDropdownActive = false },
+                                    modifier = Modifier.height(170.dp)
+                                ) {
+                                    websocketConnectionClient!!.send(
+                                        WebsocketMessageClient(
+                                            type = MessageClientClientList.TYPE,
+                                            apiKey = applicationData.apiKey,
+                                            sendFrom = "",
+                                            sendTo = "",
+                                            data = ""
+                                        )
+                                            .toJson()
+                                    )
+                                    websocketConnectionClient!!.waitForResponse()
+                                    val clientListTemp = websocketConnectionClient!!.getExecClientListVariable()
+                                    if (clientListTemp.isEmpty()) {
+                                        waitUntilClientOnlineSelectedName = ""
+                                        DropdownMenuItem(
+                                            onClick = {
+                                                waitUntilClientOnlineSelectedName = ""
+                                                waitUntilClientOnlineDropdownActive = false
+                                            }, modifier = Modifier.background(
+                                                    Color.LightGray
+                                            )
+                                        ) {
+                                            Text("     ")
+                                        }
+                                    } else {
+                                        if (waitUntilClientOnlineSelectedName.isBlank()) {
+                                            waitUntilClientOnlineSelectedName = clientListTemp[0]
+                                        }
+                                        clientListTemp.forEachIndexed { index, clientName ->
+                                            DropdownMenuItem(
+                                                onClick = {
+                                                    taskEntryData["clientToWaitFor"] = clientName
+                                                    waitUntilClientOnlineSelectedName = clientName
+                                                    waitUntilClientOnlineDropdownActive = false
+                                                }, modifier = Modifier.background(
+                                                    if (waitUntilClientOnlineSelectedName == clientName) {
+                                                        Color.LightGray
+                                                    } else {
+                                                        Color.White
+                                                    }
+                                                )
+                                            ) {
+                                                Text(clientName)
+                                            }
+                                        }
+                                    }
+                                }
+
+
+                            }
+                        }
 
                         else -> Text("unknown task type")
                     }
@@ -607,7 +711,7 @@ fun App() {
                             }
                         }
                         rowBigSeperator()
-                            taskListDataList.forEach {
+                        taskListDataMap.forEach {(index, it) ->
                                 Row {
                                     Button(
                                         enabled = !pushedTaskListDataName.contains(it.taskName),
@@ -646,7 +750,11 @@ fun App() {
             )
             if (!tempTaskListData.fileExists()) {
                 tempTaskListData.saveToFile()
-                taskListDataList.add(tempTaskListData)
+                if(taskListDataMap.keys.isEmpty()) {
+                    taskListDataMap[0] = tempTaskListData
+                } else {
+                    taskListDataMap[taskListDataMap.keys.max() + 1] = tempTaskListData
+                }
                 toSaveFile = true
                 newTaskListPopup = false
                 newTaskListName = ""
@@ -655,7 +763,7 @@ fun App() {
                 println("Task list already exists")
             }
         } else if (editTaskListPopup) {
-            val tempTaskListData = taskListDataList[taskListDataSelectedIndex]
+            val tempTaskListData = taskListDataMap[taskListDataSelectedIndex]!!
             tempTaskListData.saveToFile()
             toSaveFile = true
             editTaskListPopup = false
@@ -669,7 +777,7 @@ fun App() {
                 errorText = "Task type not found"
                 toSave = false
             } else {
-                taskListDataList[taskListDataSelectedIndex].taskActionDataList.add(
+                taskListDataMap[taskListDataSelectedIndex]!!.taskActionDataList.add(
                     TaskActionData(
                         clientName = selectedClient,
                         taskName = newTaskEntryName,
