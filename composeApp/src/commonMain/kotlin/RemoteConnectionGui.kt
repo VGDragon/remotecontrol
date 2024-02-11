@@ -1,10 +1,12 @@
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -19,14 +21,15 @@ import messages.base.client.MessageClientRemoveClientBridge
 import messages.base.client.MessageClientScriptList
 import messages.tasks.MessageStartTaskScript
 import messages.tasks.MessageStartTaskWaitUntilClientConnected
+import messages.tasks.MessageStartTaskWaitUntilSeconds
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 
 
 @OptIn(ExperimentalResourceApi::class)
 @Composable
 fun App() {
-    var connectButtonText by remember { mutableStateOf("Connect") }
-    var disconnectButtonText by remember { mutableStateOf("Disconnect") }
+    //var connectButtonText by remember { mutableStateOf("Connect") }
+    //var disconnectButtonText by remember { mutableStateOf("Disconnect") }
 
     val applicationData by remember { mutableStateOf(ApplicationData.fromFile()) }
     var websocketConnectionClient: WebsocketConnectionClient? by remember { mutableStateOf(null) }
@@ -60,11 +63,21 @@ fun App() {
     // task list data
     // change to map
 
-    var taskListDataMap by remember { mutableStateOf(
-        TaskListData.getTaskListDataFiles().mapIndexed { index: Int, s: TaskListData -> index  to s }.toMutableStateMap()) }
+    var taskListDataMap by remember {
+        mutableStateOf(
+            TaskListData.getTaskListDataFiles().mapIndexed { index: Int, s: TaskListData -> index to s }
+                .toMutableStateMap()
+        )
+    }
     //var taskListDataList by remember { mutableStateOf(TaskListData.getTaskListDataFiles()) }
     var taskListDataSelected by remember { mutableStateOf("") }
-    var taskListDataSelectedIndex by remember { mutableStateOf(0) }
+    var taskListDataSelectedIndex by remember {
+        mutableStateOf(
+            if (taskListDataMap.size > 0) 0 else {
+                -1
+            }
+        )
+    }
     var isTaskListDataDropdownActive by remember { mutableStateOf(false) }
 
     //val taskActionDataListState = taskListDataList.taskActionDataListState.collectAsState()
@@ -89,7 +102,7 @@ fun App() {
 
     // gpt idea
     // state for triggering GUI update after removing task action data
-    var updateGui by remember { mutableStateOf(1) }
+    //var updateGui by remember { mutableStateOf(1) }
 
     MaterialTheme {
 
@@ -228,16 +241,17 @@ fun App() {
                         Text("Task List")
                     }
 
-                    if (updateGui > 0) {
+                    //if (updateGui > 0) {
+                    if (taskListDataSelectedIndex != -1) {
                         for (taskActionData in taskListDataMap[taskListDataSelectedIndex]!!.taskActionDataList) {
                             rowSmallSeperator()
-                            Row (modifier = Modifier.background(color = Color(200, 0, 0, 20))){
+                            Row(modifier = Modifier.background(color = Color(200, 0, 0, 20))) {
                                 Text(taskActionData.taskName)
                                 Button(
                                     onClick = {
                                         val tempTaskListData = taskListDataMap[taskListDataSelectedIndex]
                                         tempTaskListData!!.taskActionDataList.remove(taskActionData)
-                                        updateGui += 1
+                                        //updateGui += 1
                                         // TODO: gui doesn't update
                                     },
                                     contentPadding = PaddingValues(0.dp),
@@ -248,12 +262,13 @@ fun App() {
                                 }
                             }
                         }
-                        updateGui = 1
                     }
+                    //    updateGui = 1
+                    //}
                     rowSmallSeperator()
                     Row {
                         Button(
-                            enabled = selectedClient.isNotBlank(),
+                            enabled = selectedClient.isNotBlank() && taskListDataSelectedIndex != -1,
                             onClick = {
                                 taskEntryData.clear()
                                 //taskEntryData["type"] = entryTypeList[entryTypeSelectedIndex].first.get()
@@ -311,7 +326,17 @@ fun App() {
                             Text("Save")
                         }
                     }
-
+                    rowSmallSeperator()
+                    Row {
+                        Button(
+                            onClick = {
+                                taskListDataMap.remove(taskListDataSelectedIndex)!!.deleteTaskListDataFile()
+                                applicationData.saveToFile()
+                                editTaskListPopup = false
+                            }) {
+                            Text("Delete")
+                        }
+                    }
                 }
             }
         } else if (addTaskEntry) {
@@ -330,7 +355,7 @@ fun App() {
                             addTaskEntry = false
                             editTaskListPopup = true
                             applicationData.saveToFile()
-                            updateGui += 1
+                            //updateGui += 1
                             errorText = ""
                         }) {
                         Text("Close")
@@ -407,7 +432,11 @@ fun App() {
                                 Text("script")
 
                                 Text(
-                                    if (scriptNameSelectedIndex == -1) {"     "} else {scriptNames[scriptNameSelectedIndex]},
+                                    if (scriptNameSelectedIndex == -1) {
+                                        "     "
+                                    } else {
+                                        scriptNames[scriptNameSelectedIndex]
+                                    },
                                     modifier = Modifier.clickable(onClick = { scriptNamesDropdownActive = true })
                                         .background(Color.LightGray)
                                 )
@@ -437,7 +466,7 @@ fun App() {
                                                 scriptNameSelectedIndex = -1
                                                 scriptNamesDropdownActive = false
                                             }, modifier = Modifier.background(
-                                                    Color.LightGray
+                                                Color.LightGray
                                             )
                                         ) {
                                             Text("     ")
@@ -469,6 +498,7 @@ fun App() {
                                 }
                             }
                         }
+
                         MessageStartTaskWaitUntilClientConnected.TYPE -> {
                             websocketConnectionClient!!.send(
                                 WebsocketMessageClient(
@@ -490,14 +520,15 @@ fun App() {
                             } else if (waitUntilClientOnlineSelectedName.isBlank()) {
                                 waitUntilClientOnlineSelectedName = clientList[0]
                             }
-                            // TODO: add client list
                             Row {
                                 Text("Client to wait for: ")
-                                Text(waitUntilClientOnlineSelectedName, modifier = Modifier.clickable(
-                                    onClick = {
-                                        waitUntilClientOnlineDropdownActive = true
-                                    })
-                                    .background(Color.LightGray))
+                                Text(
+                                    waitUntilClientOnlineSelectedName, modifier = Modifier.clickable(
+                                        onClick = {
+                                            waitUntilClientOnlineDropdownActive = true
+                                        })
+                                        .background(Color.LightGray)
+                                )
                                 DropdownMenu(
                                     expanded = waitUntilClientOnlineDropdownActive,
                                     onDismissRequest = { waitUntilClientOnlineDropdownActive = false },
@@ -522,7 +553,7 @@ fun App() {
                                                 waitUntilClientOnlineSelectedName = ""
                                                 waitUntilClientOnlineDropdownActive = false
                                             }, modifier = Modifier.background(
-                                                    Color.LightGray
+                                                Color.LightGray
                                             )
                                         ) {
                                             Text("     ")
@@ -534,7 +565,7 @@ fun App() {
                                         clientListTemp.forEachIndexed { index, clientName ->
                                             DropdownMenuItem(
                                                 onClick = {
-                                                    taskEntryData["clientToWaitFor"] = clientName
+                                                    taskEntryData["clientToWaitForClient"] = clientName
                                                     waitUntilClientOnlineSelectedName = clientName
                                                     waitUntilClientOnlineDropdownActive = false
                                                 }, modifier = Modifier.background(
@@ -552,6 +583,19 @@ fun App() {
                                 }
 
 
+                            }
+                        }
+
+                        MessageStartTaskWaitUntilSeconds.TYPE -> {
+                            Row {
+                                Text("Seconds to wait: ")
+                                TextField(
+                                    value = taskEntryData["clientToWaitForSeconds"] ?: "",
+                                    onValueChange = { seconds ->
+                                        taskEntryData["clientToWaitForSeconds"] = seconds.filter { it.isDigit() }
+                                    },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                )
                             }
                         }
 
@@ -629,42 +673,57 @@ fun App() {
                     Row {
                         Button(enabled = connectButtonActive.value,
                             onClick = {
-                                websocketConnectionClient = connectToServer(applicationData)
-                                if (websocketConnectionClient == null) {
-                                    println("Error: Connection failed")
-                                    errorText = "Connection failed"
-                                } else {
-                                    websocketConnectionClient!!.send(
-                                        WebsocketMessageClient(
-                                            type = MessageClientRegister.TYPE,
-                                            apiKey = applicationData.apiKey,
-                                            sendFrom = "",
-                                            sendTo = "",
-                                            data = MessageClientRegister(
-                                                clientName = websocketConnectionClient!!.computerName,
-                                                isExecutable = false
-                                            ).toJson()
-                                        )
-                                            .toJson()
-                                    )
-                                    websocketConnectionClient!!.waitForResponse()
-                                    websocketConnectionClient!!.send(
-                                        WebsocketMessageClient(
-                                            type = MessageClientClientList.TYPE,
-                                            apiKey = applicationData.apiKey,
-                                            sendFrom = "",
-                                            sendTo = "",
-                                            data = ""
-                                        )
-                                            .toJson()
-                                    )
-                                    connectButtonActive.value = false
-                                    disconnectButtonActive.value = true
-                                    applicationData.saveToFile()
-                                    websocketConnectionClient!!.waitForResponse()
-                                }
+
+                                Thread {
+                                    var websocketConnectionClientTemp = connectToServer(applicationData)
+                                    if (websocketConnectionClientTemp == null) {
+                                        println("Error: Connection failed")
+                                        errorText = "Connection failed"
+                                        connectButtonActive.value = false
+                                        disconnectButtonActive.value = true
+                                        applicationData.saveToFile()
+                                    } else {
+                                        try {
+                                            websocketConnectionClientTemp.send(
+                                                WebsocketMessageClient(
+                                                    type = MessageClientRegister.TYPE,
+                                                    apiKey = applicationData.apiKey,
+                                                    sendFrom = "",
+                                                    sendTo = "",
+                                                    data = MessageClientRegister(
+                                                        clientName = websocketConnectionClientTemp.computerName,
+                                                        isExecutable = false
+                                                    ).toJson()
+                                                )
+                                                    .toJson()
+                                            )
+                                            websocketConnectionClientTemp.waitForResponse()
+                                            websocketConnectionClientTemp.send(
+                                                WebsocketMessageClient(
+                                                    type = MessageClientClientList.TYPE,
+                                                    apiKey = applicationData.apiKey,
+                                                    sendFrom = "",
+                                                    sendTo = "",
+                                                    data = ""
+                                                )
+                                                    .toJson()
+                                            )
+                                            websocketConnectionClientTemp.waitForResponse()
+                                            applicationData.saveToFile()
+                                            websocketConnectionClient = websocketConnectionClientTemp
+                                            connectButtonActive.value = false
+                                            disconnectButtonActive.value = true
+                                        } catch (e: Exception) {
+                                            errorText = "Error: Connection failed"
+                                            println("Error: ${e.message}")
+                                            connectButtonActive.value = true
+                                            disconnectButtonActive.value = false
+                                        }
+
+                                    }
+                                }.start()
                             }) {
-                            Text(connectButtonText)
+                            Text("Connect")
                         }
                         Button(enabled = disconnectButtonActive.value,
                             onClick = {
@@ -683,7 +742,7 @@ fun App() {
                                 connectButtonActive.value = true
                                 disconnectButtonActive.value = false
                             }) {
-                            Text(disconnectButtonText)
+                            Text("Disconnect")
                         }
                     }
                     rowSmallSeperator()
@@ -704,34 +763,34 @@ fun App() {
                                 Button(
                                     onClick = {
                                         editTaskListPopup = true
-                                        updateGui += 1
+                                        //updateGui += 1
                                     }) {
                                     Text("Edit Task List")
                                 }
                             }
                         }
                         rowBigSeperator()
-                        taskListDataMap.forEach {(index, it) ->
-                                Row {
-                                    Button(
-                                        enabled = !pushedTaskListDataName.contains(it.taskName),
-                                        onClick = {
-                                            pushedTaskListDataName[it.taskName] = ""
-                                            Thread {
-                                                Thread.sleep(1000)
-                                                pushedTaskListDataName.remove(it.taskName)
-                                            }.start()
-                                            it.startTaskList(ws = websocketConnectionClient!!)
-                                            updateGui += 1
-                                        },
-                                        contentPadding = PaddingValues(0.dp),
-                                        modifier = Modifier
-                                            .padding(start = 2.dp, top = 2.dp, end = 2.dp, bottom = 2.dp)
-                                    ) {
-                                        Text(it.taskName, fontSize = 15.sp)
-                                    }
+                        taskListDataMap.forEach { (index, it) ->
+                            Row {
+                                Button(
+                                    enabled = !pushedTaskListDataName.contains(it.taskName),
+                                    onClick = {
+                                        pushedTaskListDataName[it.taskName] = ""
+                                        Thread {
+                                            Thread.sleep(1000)
+                                            pushedTaskListDataName.remove(it.taskName)
+                                        }.start()
+                                        it.startTaskList(ws = websocketConnectionClient!!)
+                                        //updateGui += 1
+                                    },
+                                    contentPadding = PaddingValues(0.dp),
+                                    modifier = Modifier
+                                        .padding(start = 2.dp, top = 2.dp, end = 2.dp, bottom = 2.dp)
+                                ) {
+                                    Text(it.taskName, fontSize = 15.sp)
                                 }
                             }
+                        }
                     }
 
                 }
@@ -750,7 +809,7 @@ fun App() {
             )
             if (!tempTaskListData.fileExists()) {
                 tempTaskListData.saveToFile()
-                if(taskListDataMap.keys.isEmpty()) {
+                if (taskListDataMap.keys.isEmpty()) {
                     taskListDataMap[0] = tempTaskListData
                 } else {
                     taskListDataMap[taskListDataMap.keys.max() + 1] = tempTaskListData
@@ -769,9 +828,9 @@ fun App() {
             editTaskListPopup = false
         } else if (addTaskEntry) {
             val tempTaskListData = TaskFunctions.getTaskFromGuiData(
-                taskType=entryTypeList[entryTypeSelectedIndex].first.get(),
-                client=selectedClient,
-                entryTypeData=taskEntryData
+                taskType = entryTypeList[entryTypeSelectedIndex].first.get(),
+                client = selectedClient,
+                entryTypeData = taskEntryData
             )
             if (tempTaskListData == null) {
                 errorText = "Task type not found"
@@ -789,7 +848,7 @@ fun App() {
                 addTaskEntry = false
                 editTaskListPopup = true
             }
-            updateGui += 1
+            //updateGui += 1
             taskEntryData.clear()
         }
         if (toSaveFile) {

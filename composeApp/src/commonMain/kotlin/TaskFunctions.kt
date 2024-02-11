@@ -1,10 +1,7 @@
 import connection.WebsocketConnectionClient
 import interfaces.TaskInterface
 import interfaces.TaskMessageInterface
-import messages.tasks.MessageStartTaskBaseConvert
-import messages.tasks.MessageStartTaskScript
-import messages.tasks.MessageStartTaskSendTask
-import messages.tasks.MessageStartTaskWaitUntilClientConnected
+import messages.tasks.*
 import kotlin.reflect.KProperty0
 
 class TaskFunctions {
@@ -14,6 +11,7 @@ class TaskFunctions {
                 MessageStartTaskScript.TYPE -> MessageStartTaskScript.fromJson(message)
                 MessageStartTaskSendTask.TYPE -> MessageStartTaskSendTask.fromJson(message)
                 MessageStartTaskWaitUntilClientConnected.TYPE -> MessageStartTaskWaitUntilClientConnected.fromJson(message)
+                MessageStartTaskWaitUntilSeconds.TYPE -> MessageStartTaskWaitUntilSeconds.fromJson(message)
                 // TODO add new task types here
                 else -> MessageStartTaskBaseConvert(type, "")
             }
@@ -29,10 +27,16 @@ class TaskFunctions {
                     return MessageStartTaskScript(type=taskType, clientTo=client, scriptName = entryTypeData["scriptName"]!!)
                 }
                 MessageStartTaskWaitUntilClientConnected.TYPE -> {
-                    if (entryTypeData["clientToWaitFor"].isNullOrBlank()){
+                    if (entryTypeData["clientToWaitForClient"].isNullOrBlank()){
                         return null
                     }
-                    return MessageStartTaskWaitUntilClientConnected(type=taskType, clientTo=client, clientToWaitFor = entryTypeData["clientToWaitFor"]!!)
+                    return MessageStartTaskWaitUntilClientConnected(type=taskType, clientTo=client, clientToWaitFor = entryTypeData["clientToWaitForClient"]!!)
+                }
+                MessageStartTaskWaitUntilSeconds.TYPE -> {
+                    if (entryTypeData["clientToWaitForSeconds"].isNullOrBlank()){
+                        return null
+                    }
+                    return MessageStartTaskWaitUntilSeconds(type=taskType, clientTo=client, waitUntilSeconds = entryTypeData["clientToWaitForSeconds"]!!.toLong())
                 }
                 // TODO add new task types here
                 else ->
@@ -44,6 +48,7 @@ class TaskFunctions {
             return listOf(
                 Triple(MessageStartTaskScript::TYPE, null, null),
                 Triple(MessageStartTaskWaitUntilClientConnected::TYPE, null, null),
+                Triple(MessageStartTaskWaitUntilSeconds::TYPE, null, null),
                 // TODO add new task types here
                 //Triple(MessageStartTaskScript::TYPE, null, null)
             )

@@ -73,6 +73,13 @@ class TaskListData(
         )
     }
 
+    fun deleteTaskListDataFile() {
+        val file = java.io.File(GlobalVariables.taskFolder(), fileName)
+        if (file.exists()) {
+            file.delete()
+        }
+    }
+
     companion object {
         fun getTaskListDataFiles(): MutableList<TaskListData> {
             val folder = java.io.File(GlobalVariables.taskFolder())

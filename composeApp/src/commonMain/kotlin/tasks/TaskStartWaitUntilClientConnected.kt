@@ -50,7 +50,7 @@ class TaskStartWaitUntilClientConnected(
             websocketConnectionClient.addTask(this)
             taskThread!!.start()
         }
-        println("Running SendTask")
+        println("Running waitUntilClientConnectedTask")
     }
 
     override fun stop() {
