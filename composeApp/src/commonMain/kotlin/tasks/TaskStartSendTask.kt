@@ -22,7 +22,7 @@ class TaskStartSendTask(
                 return
             }
             taskThread = Thread {
-                websocketConnectionClient.send(
+                websocketConnectionClient.sendMessage(
                     WebsocketMessageClient(
                         type = MessageStartTask.TYPE,
                         apiKey = websocketConnectionClient.applicationData.apiKey,

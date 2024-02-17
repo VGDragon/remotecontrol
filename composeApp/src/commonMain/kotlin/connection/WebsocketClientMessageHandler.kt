@@ -39,7 +39,7 @@ class WebsocketClientMessageHandler(val applicationData: ApplicationData) {
             MessageStartTask.TYPE -> {
                 if(TaskFunctions.startTaskHandler(ws, MessageStartTask.fromJson(message.data), message.sendFrom)) {
                     println("Client: Task started")
-                    ws.send(WebsocketMessageClient(
+                    ws.sendMessage(WebsocketMessageClient(
                         type = MessageServerResponseCode.TYPE,
                         apiKey = ws.applicationData.apiKey,
                         sendFrom = ws.computerName,
@@ -48,7 +48,7 @@ class WebsocketClientMessageHandler(val applicationData: ApplicationData) {
                     ).toJson())
                 } else {
                     println("Client: Task not started")
-                    ws.send(WebsocketMessageClient(
+                    ws.sendMessage(WebsocketMessageClient(
                         type = MessageServerResponseCode.TYPE,
                         apiKey = ws.applicationData.apiKey,
                         sendFrom = ws.computerName,
@@ -60,7 +60,7 @@ class WebsocketClientMessageHandler(val applicationData: ApplicationData) {
             MessageClientScriptList.TYPE -> {
                 println("Client: Script list received")
 
-                ws.send(WebsocketMessageClient(
+                ws.sendMessage(WebsocketMessageClient(
                     type = MessageServerResponseCode.TYPE,
                     apiKey = ws.applicationData.apiKey,
                     sendFrom = ws.computerName,

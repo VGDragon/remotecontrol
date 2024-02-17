@@ -6,7 +6,7 @@ import com.google.gson.Gson
 class ApplicationData{
     var apiKey: String = ""
     var address: String = "localhost"
-    var port: Int = 8080
+    var port: Int = 8899
     var isServer: Boolean = false
     var isClient: Boolean = true
     var exec: Boolean = false

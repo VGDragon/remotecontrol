@@ -286,7 +286,7 @@ fun App() {
                         Row {
                             Column {
 
-                                websocketConnectionClient!!.send(
+                                websocketConnectionClient!!.sendMessage(
                                     WebsocketMessageClient(
                                         type = MessageClientClientList.TYPE,
                                         apiKey = applicationData.apiKey,
@@ -409,7 +409,7 @@ fun App() {
                     when (entryTypeList[entryTypeSelectedIndex].first.get()) {
                         MessageStartTaskScript.TYPE -> {
                             if (scriptNames.isEmpty()) {
-                                websocketConnectionClient!!.send(
+                                websocketConnectionClient!!.sendMessage(
                                     WebsocketMessageClient(
                                         type = MessageClientScriptList.TYPE,
                                         apiKey = applicationData.apiKey,
@@ -445,7 +445,7 @@ fun App() {
                                     onDismissRequest = { scriptNamesDropdownActive = false },
                                     modifier = Modifier.height(170.dp)
                                 ) {
-                                    websocketConnectionClient!!.send(
+                                    websocketConnectionClient!!.sendMessage(
                                         WebsocketMessageClient(
                                             type = MessageClientScriptList.TYPE,
                                             apiKey = applicationData.apiKey,
@@ -500,7 +500,7 @@ fun App() {
                         }
 
                         MessageStartTaskWaitUntilClientConnected.TYPE -> {
-                            websocketConnectionClient!!.send(
+                            websocketConnectionClient!!.sendMessage(
                                 WebsocketMessageClient(
                                     type = MessageClientRegister.TYPE,
                                     apiKey = applicationData.apiKey,
@@ -534,7 +534,7 @@ fun App() {
                                     onDismissRequest = { waitUntilClientOnlineDropdownActive = false },
                                     modifier = Modifier.height(170.dp)
                                 ) {
-                                    websocketConnectionClient!!.send(
+                                    websocketConnectionClient!!.sendMessage(
                                         WebsocketMessageClient(
                                             type = MessageClientClientList.TYPE,
                                             apiKey = applicationData.apiKey,
@@ -684,7 +684,7 @@ fun App() {
                                         applicationData.saveToFile()
                                     } else {
                                         try {
-                                            websocketConnectionClientTemp.send(
+                                            websocketConnectionClientTemp.sendMessage(
                                                 WebsocketMessageClient(
                                                     type = MessageClientRegister.TYPE,
                                                     apiKey = applicationData.apiKey,
@@ -698,7 +698,7 @@ fun App() {
                                                     .toJson()
                                             )
                                             websocketConnectionClientTemp.waitForResponse()
-                                            websocketConnectionClientTemp.send(
+                                            websocketConnectionClientTemp.sendMessage(
                                                 WebsocketMessageClient(
                                                     type = MessageClientClientList.TYPE,
                                                     apiKey = applicationData.apiKey,
@@ -727,7 +727,7 @@ fun App() {
                         }
                         Button(enabled = disconnectButtonActive.value,
                             onClick = {
-                                websocketConnectionClient!!.send(
+                                websocketConnectionClient!!.sendMessage(
                                     WebsocketMessageClient(
                                         type = MessageClientRemoveClientBridge.TYPE,
                                         apiKey = applicationData.apiKey,

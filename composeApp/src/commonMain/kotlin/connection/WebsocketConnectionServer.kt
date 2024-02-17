@@ -1,7 +1,9 @@
 package connection
 
+import badclient.BadClientHandler
 import filedata.ApplicationData
 import messages.WebsocketMessageClient
+import messages.base.MessageBase
 import org.java_websocket.WebSocket
 import org.java_websocket.handshake.ClientHandshake
 import org.java_websocket.server.WebSocketServer
@@ -19,6 +21,8 @@ class WebsocketConnectionServer : WebSocketServer {
     val clientTaskRunningPermissionLock = Object()
     val clientConnectedNames: MutableMap<String, WebSocket> = mutableMapOf()
     val clientConnectedNamesLock = Object()
+    val keyMap: MutableMap<String, ConnectionKeyPair> = mutableMapOf()
+    val keyMapLock = Object()
 
     constructor(applicationData: ApplicationData) : super(InetSocketAddress(applicationData.port)) {
         this.applicationData = applicationData
@@ -45,7 +49,35 @@ class WebsocketConnectionServer : WebSocketServer {
         if (p1 == null || p0 == null) {
             return
         }
-        val messageClass = WebsocketMessageClient.fromJson(p1)
+        synchronized(BadClientHandler.badClientMapLock) {
+            if (BadClientHandler.badClientMap.contains(p0)) {
+                BadClientHandler.handleBadClient(p0)
+                return
+            }
+        }
+        val messageBase = MessageBase.fromJson(p1)
+        val message = synchronized(keyMapLock) {
+            val connectionKeyPair = if (!keyMap.containsKey(messageBase.name)) {
+                var connectionKeyPair = ConnectionKeyPair.loadFile(messageBase.name)
+                if (connectionKeyPair == null) {
+                    BadClientHandler.handleBadClient(p0)
+                    return
+                }
+                connectionKeyPair = ConnectionKeyPair.loadFile(messageBase.name)
+
+                if (connectionKeyPair == null) {
+                    BadClientHandler.handleBadClient(p0)
+                    return
+                }
+                keyMap[messageBase.name] = connectionKeyPair
+                connectionKeyPair
+            } else {
+                keyMap[messageBase.name]!!
+            }
+
+            connectionKeyPair.decrypt(messageBase.msg)
+        }
+        val messageClass = WebsocketMessageClient.fromJson(message)
         websocketClientMessageHandler.handle(this, p0, messageClass)
     }
 
@@ -55,26 +87,56 @@ class WebsocketConnectionServer : WebSocketServer {
 
     override fun onStart() {
     }
+
+    //
+    fun sendMessage(ws: WebSocket, message: String) {
+        val clientName = synchronized(clientConnectedNamesLock){
+            var clientName: String? = null
+            clientConnectedNames.forEach {
+                if (it.value == ws){
+                    clientName = it.key
+                    return@forEach
+                }
+            }
+            if (clientName == null){
+                return
+            }
+            clientName
+        }
+        val messageToSend =synchronized(keyMapLock){
+            if (!keyMap.containsKey(clientName)){
+                return
+            }
+             keyMap[clientName]!!.encrypt(message)
+        }
+        ws.send(messageToSend)
+    }
+
+    // getters and setters
     fun getKeepRunning(): Boolean {
         synchronized(keepWsRunningLock) {
             return keepWsRunning
         }
     }
+
     fun setKeepRunning(value: Boolean) {
         synchronized(keepWsRunningLock) {
             keepWsRunning = value
         }
     }
+
     fun getClientRegisteredNames(): List<String> {
         synchronized(clientTaskRunningPermissionLock) {
             return clientTaskRunningPermission.keys.toList()
         }
     }
+
     fun getClientRegisterItem(key: String): WebSocket? {
         synchronized(clientTaskRunningPermissionLock) {
             return clientTaskRunningPermission[key]
         }
     }
+
     fun setClientRegisterItem(key: String, value: WebSocket) {
         synchronized(clientTaskRunningPermissionLock) {
             clientTaskRunningPermission[key] = value
@@ -97,16 +159,19 @@ class WebsocketConnectionServer : WebSocketServer {
             return clientConnectedNames.keys.toList()
         }
     }
+
     fun getClientConnectedItem(key: String): WebSocket? {
         synchronized(clientConnectedNamesLock) {
             return clientConnectedNames[key]
         }
     }
+
     fun setClientConnectedItem(key: String, value: WebSocket) {
         synchronized(clientConnectedNamesLock) {
             clientConnectedNames[key] = value
         }
     }
+
     fun removeClientConnectedItem(key: String) {
         synchronized(clientConnectedNamesLock) {
             clientConnectedNames.remove(key)

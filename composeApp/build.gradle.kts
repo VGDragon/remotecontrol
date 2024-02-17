@@ -56,6 +56,16 @@ kotlin {
             implementation("com.squareup.okhttp3:okhttp:4.9.0")
             implementation("com.neovisionaries:nv-websocket-client:2.3")
             implementation("org.java-websocket:Java-WebSocket:1.5.4")
+
+            // Ktor dependencies websocket
+            implementation("io.ktor:ktor-server-netty:2.3.8")
+            implementation("io.ktor:ktor-websockets:2.3.8")
+            implementation("io.ktor:ktor-client-okhttp:2.3.8")
+            // Ktor dependencies
+            implementation("io.ktor:ktor-server-core:2.3.8") // Ktor core features
+            implementation("io.ktor:ktor-gson:1.6.8") // Gson support for Ktor
+            implementation("io.ktor:ktor-serialization:2.3.8") // Optional: Serialization support for Ktor (if you prefer)
+
             // add json parser gson
             implementation("com.google.code.gson:gson:2.8.7") // TODO change to kotson or moshi
             // https://mvnrepository.com/artifact/com.github.salomonbrys.kotson/kotson

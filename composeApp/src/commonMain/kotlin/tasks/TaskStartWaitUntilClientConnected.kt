@@ -24,7 +24,7 @@ class TaskStartWaitUntilClientConnected(
             taskThread = Thread {
                 var stillWaiting = true
                 while (stillWaiting) {
-                    websocketConnectionClient.send(
+                    websocketConnectionClient.sendMessage(
                         WebsocketMessageClient(
                             type = MessageClientClientList.TYPE,
                             apiKey = websocketConnectionClient.applicationData.apiKey,

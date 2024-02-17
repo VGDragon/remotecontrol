@@ -6,6 +6,7 @@ import messages.tasks.MessageStartTaskScript
 
 
 fun testingClientScript(){
+
     GlobalVariables.computerName = System.getenv("COMPUTERNAME")
     // storing a class in a variable and create a class object from it
     val applicationData = ApplicationData.fromFile()
