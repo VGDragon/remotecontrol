@@ -36,8 +36,25 @@ class ConnectionKeyPair (val keyOwner: String,
 
         val cipher = Cipher.getInstance(keyCryptoMethodeInstance)
         cipher.init(Cipher.ENCRYPT_MODE, publicKey)
-        val encryptedBytes = cipher.doFinal(message.toByteArray(Charsets.UTF_8))
-        return Base64.getEncoder().encodeToString(encryptedBytes)
+
+        // cut message
+        val messageList: MutableList<String> = mutableListOf()
+        var messageCopy: String = message
+        while (messageCopy.length > 0){
+            val cutedMessage = if (messageCopy.length < 100){
+                val tempMessage = messageCopy.substring(0, messageCopy.length)
+                messageCopy = ""
+                tempMessage
+            } else {
+                val tempMessage = messageCopy.substring(0, 100)
+                messageCopy = messageCopy.substring(100)
+                tempMessage
+            }
+            val encryptedBytes = cipher.doFinal(cutedMessage.toByteArray(Charsets.UTF_8))
+            messageList.add(Base64.getEncoder().encodeToString(encryptedBytes))
+        }
+        // crate string from the messageList
+        return messageList.joinToString(separator = "\n")
     }
 
     fun decrypt(encryptedMessage: String): String {
@@ -46,8 +63,14 @@ class ConnectionKeyPair (val keyOwner: String,
 
         val cipher = Cipher.getInstance(keyCryptoMethodeInstance)
         cipher.init(Cipher.DECRYPT_MODE, privateKey)
-        val decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(encryptedMessage))
-        return String(decryptedBytes, Charsets.UTF_8)
+        // cut message
+        val messageList = encryptedMessage.split("\n")
+        val decryptedMessageList: MutableList<String> = mutableListOf()
+        for (tempEncryptedMessage in messageList){
+            val decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(tempEncryptedMessage))
+            decryptedMessageList.add(String(decryptedBytes, Charsets.UTF_8))
+        }
+        return decryptedMessageList.joinToString(separator = "")
     }
     fun saveKeyPair(){
         // Save the key pair to a file

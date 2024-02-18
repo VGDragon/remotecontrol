@@ -28,6 +28,7 @@ import org.jetbrains.compose.resources.ExperimentalResourceApi
 @OptIn(ExperimentalResourceApi::class)
 @Composable
 fun App() {
+    // TODO: deactivate the disconnect button after disconnecting (if the server does it)
     //var connectButtonText by remember { mutableStateOf("Connect") }
     //var disconnectButtonText by remember { mutableStateOf("Disconnect") }
 

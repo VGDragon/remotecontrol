@@ -24,18 +24,23 @@ class TempTestScript {
 
     fun test() {
         val connectionKeyPair = ConnectionKeyPair("test", "test").generateKeyPair()
-        val testString = "This is a test"
-        val encryptedString = connectionKeyPair.encrypt(testString)
-        println("Encrypted: $encryptedString")
+        connectionKeyPair.privateKeyTarget = connectionKeyPair.ownPrivateKey
+        val testString = "This is a test."
+        var sendString = ""
+        for (i in 0..1000) {
+            sendString += testString
+        }
+        val encryptedString = connectionKeyPair.encrypt(sendString)
+        //println("Encrypted: $encryptedString")
         val decryptedString = connectionKeyPair.decrypt(encryptedString)
-        println("Decrypted: $decryptedString")
-        println(testString == decryptedString)
+        //println("Decrypted: $decryptedString")
+        println(sendString == decryptedString)
+        return
         val restServer = RestServer().build(8080)
         restServer.start(wait = false)
         Thread.sleep(1000)
         sendPost()
         restServer.stop(0, 0)
-        return
 
         while (true) {
             println("Server is running")

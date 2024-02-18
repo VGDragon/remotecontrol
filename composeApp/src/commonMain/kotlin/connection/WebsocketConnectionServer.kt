@@ -15,6 +15,7 @@ import java.net.InetSocketAddress
 class WebsocketConnectionServer : WebSocketServer {
     val applicationData: ApplicationData
     var websocketClients: MutableList<WebSocket>
+    var websocketClientsLock = Object()
     var websocketClientMessageHandler: WebsocketServerMessageHandler
     var keepWsRunning: Boolean = true
     var keepWsRunningLock = Object()
@@ -33,7 +34,9 @@ class WebsocketConnectionServer : WebSocketServer {
 
     override fun onOpen(p0: WebSocket?, p1: ClientHandshake?) {
         if (p0 != null) {
-            websocketClients.add(p0)
+            synchronized(websocketClientsLock) {
+                websocketClients.add(p0)
+            }
         }
         println("Server: Client connected")
     }
@@ -43,7 +46,11 @@ class WebsocketConnectionServer : WebSocketServer {
         if (p0 == null) {
             return
         }
-        websocketClients.remove(p0)
+        synchronized(websocketClientsLock) {
+            websocketClients.remove(p0)
+        }
+        removeClientRegisterItem(p0)
+        removeClientConnectedItem(p0)
     }
 
     override fun onMessage(p0: WebSocket?, p1: String?) {
@@ -52,6 +59,7 @@ class WebsocketConnectionServer : WebSocketServer {
         }
         synchronized(BadClientHandler.badClientMapLock) {
             if (BadClientHandler.badClientMap.contains(p0)) {
+                println("bad client")
                 BadClientHandler.handleBadClient(p0)
                 return
             }
@@ -158,6 +166,19 @@ class WebsocketConnectionServer : WebSocketServer {
         }
         return null
     }
+    fun removeClientRegisterItem(key: String) {
+        synchronized(clientTaskRunningPermissionLock) {
+            clientTaskRunningPermission.remove(key)
+        }
+    }
+    fun removeClientRegisterItem(ws: WebSocket) {
+        val key = getClientRegisterNameFromWs(ws)
+        synchronized(clientTaskRunningPermissionLock) {
+            if (key != null) {
+                clientTaskRunningPermission.remove(key)
+            }
+        }
+    }
 
     fun getClientConnectedNames(): List<String> {
         synchronized(clientConnectedNamesLock) {
@@ -176,10 +197,28 @@ class WebsocketConnectionServer : WebSocketServer {
             clientConnectedNames[key] = value
         }
     }
+    fun getClientConnectedNameFromWs(ws: WebSocket): String? {
+        synchronized(clientConnectedNamesLock) {
+            for ((key, value) in clientConnectedNames) {
+                if (value == ws) {
+                    return key
+                }
+            }
+        }
+        return null
+    }
 
     fun removeClientConnectedItem(key: String) {
         synchronized(clientConnectedNamesLock) {
             clientConnectedNames.remove(key)
+        }
+    }
+    fun removeClientConnectedItem(ws: WebSocket) {
+        val key = getClientConnectedNameFromWs(ws)
+        synchronized(clientConnectedNamesLock) {
+            if (key != null) {
+                clientConnectedNames.remove(key)
+            }
         }
     }
 
