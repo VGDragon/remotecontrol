@@ -9,6 +9,7 @@ import java.io.File
 
 
 fun testingClientExecScript(){
+    GlobalVariables.appFolderName = File("data", "client_exec_1").absolutePath
     GlobalVariables.computerName = System.getenv("COMPUTERNAME") + "_1"
     GlobalVariables.createFolders()
     val applicationData = ApplicationData.fromFile()

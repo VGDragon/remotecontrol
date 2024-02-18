@@ -1,0 +1,14 @@
+# ubuntu service
+[Unit]
+Description=remotecontrol server
+After=network.target
+
+[Service]
+Type=simple
+User=dragonking3x
+WorkingDirectory=/apps/remotecontrol/server
+ExecStart=/apps/remotecontrol/server/start_server.sh
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

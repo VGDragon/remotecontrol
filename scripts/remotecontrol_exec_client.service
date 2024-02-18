@@ -1,0 +1,13 @@
+# ubuntu service
+[Unit]
+Description=remotecontrol execute client
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/apps/remotecontrol/execute_client
+ExecStart=/apps/remotecontrol/execute_client/start_execute_client.sh
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

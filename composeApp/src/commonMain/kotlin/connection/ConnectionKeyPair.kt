@@ -1,6 +1,7 @@
 package connection
 
 import com.google.gson.Gson
+import java.io.File
 import java.security.KeyPairGenerator
 import java.security.PrivateKey
 import java.security.PublicKey
@@ -15,7 +16,7 @@ class ConnectionKeyPair (val keyOwner: String,
     var ownPublicKey: String = ""
     var ownPrivateKey: String = ""
 
-    var publicKeyTarget: String = ""
+    var privateKeyTarget: String = ""
 
 
     fun generateKeyPair(): ConnectionKeyPair {
@@ -39,7 +40,7 @@ class ConnectionKeyPair (val keyOwner: String,
 
     fun decrypt(encryptedMessage: String): String {
         val privateKey: PrivateKey = java.security.KeyFactory.getInstance("RSA")
-            .generatePrivate(java.security.spec.PKCS8EncodedKeySpec(Base64.getDecoder().decode(ownPrivateKey)))
+            .generatePrivate(java.security.spec.PKCS8EncodedKeySpec(Base64.getDecoder().decode(privateKeyTarget)))
 
         val cipher = Cipher.getInstance(keyCryptoMethode)
         cipher.init(Cipher.DECRYPT_MODE, privateKey)
@@ -48,15 +49,15 @@ class ConnectionKeyPair (val keyOwner: String,
     }
     fun saveKeyPair(){
         // Save the key pair to a file
-        val folder = java.io.File(GlobalVariables.keyPairsFolder())
+        val folder = File(GlobalVariables.keyPairsFolder())
         if (!folder.exists()) {
             folder.mkdirs()
         }
-        val file = java.io.File(GlobalVariables.keyPairsFolder(), keyAlias)
+        val file = File(GlobalVariables.keyPairsFolder(), keyAlias)
         file.writeText(Gson().toJson(this))
     }
     fun deleteKeyPair(){
-        val file = java.io.File(GlobalVariables.keyPairsFolder(), keyAlias)
+        val file = File(GlobalVariables.keyPairsFolder(), keyAlias)
         if (file.exists()){
             file.delete()
         }
@@ -64,7 +65,7 @@ class ConnectionKeyPair (val keyOwner: String,
 
     companion object {
         fun loadFile(keyAlias: String): ConnectionKeyPair? {
-            val file = java.io.File(GlobalVariables.keyPairsFolder(), keyAlias)
+            val file = File(GlobalVariables.keyPairsFolder(), keyAlias)
             if (!file.exists())
                 return null
             return Gson().fromJson(file.readText(), ConnectionKeyPair::class.java)

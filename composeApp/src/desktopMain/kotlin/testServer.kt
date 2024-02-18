@@ -57,7 +57,9 @@ fun startServerWithGuiTest(){
 }
 
 fun testingServerScript(){
+    GlobalVariables.appFolderName = File("data", "server").absolutePath
     GlobalVariables.computerName = System.getenv("COMPUTERNAME")
+    GlobalVariables.createFolders()
     // storing a class in a variable and create a class object from it
     val applicationData = ApplicationData.fromFile()
     val wsServer = WebsocketConnectionServer(applicationData)

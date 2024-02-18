@@ -1,5 +1,6 @@
 package connection
 
+import GlobalVariables
 import badclient.BadClientHandler
 import filedata.ApplicationData
 import messages.WebsocketMessageClient
@@ -56,6 +57,10 @@ class WebsocketConnectionServer : WebSocketServer {
             }
         }
         val messageBase = MessageBase.fromJson(p1)
+        if (messageBase.name.isEmpty()){
+            p0.send(MessageBase("", GlobalVariables.computerName).toJson())
+            return
+        }
         val message = synchronized(keyMapLock) {
             val connectionKeyPair = if (!keyMap.containsKey(messageBase.name)) {
                 var connectionKeyPair = ConnectionKeyPair.loadFile(messageBase.name)
@@ -109,7 +114,7 @@ class WebsocketConnectionServer : WebSocketServer {
             }
              keyMap[clientName]!!.encrypt(message)
         }
-        ws.send(messageToSend)
+        ws.send(MessageBase(GlobalVariables.computerName, messageToSend).toJson())
     }
 
     // getters and setters

@@ -43,13 +43,14 @@ class RestServer {
             keyAlias = restMessageKeyExchange.keyAlias,
             keyCryptoMethode = restMessageKeyExchange.keyCryptoMethode
         )
-        connectionKeyPair.publicKeyTarget = restMessageKeyExchange.publicKey
+        connectionKeyPair.generateKeyPair()
+        connectionKeyPair.privateKeyTarget = restMessageKeyExchange.privateKey
         connectionKeyPair.saveKeyPair()
 
         return RestMessageKeyExchange(
             keyOwner = GlobalVariables.computerName,
             keyAlias = GlobalVariables.computerName,
             keyCryptoMethode = restMessageKeyExchange.keyCryptoMethode,
-            publicKey = connectionKeyPair.ownPublicKey).toJson()
+            privateKey = connectionKeyPair.ownPrivateKey).toJson()
     }
 }

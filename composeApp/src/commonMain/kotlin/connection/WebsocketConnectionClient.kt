@@ -17,7 +17,6 @@ import rest.message.RestMessageKeyExchange
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
-import kotlin.jvm.Throws
 
 class WebsocketConnectionClient : WebSocketClient {
     val applicationData: ApplicationData
@@ -118,7 +117,21 @@ class WebsocketConnectionClient : WebSocketClient {
     }
 
     fun setConnectionKeyPair() {
-
+        this.send(MessageBase("", "").toJson())
+        while (connectionKeyPair == null) {
+            Thread.sleep(100)
+        }
+    }
+    fun getConnectionKeyPair(serverName: String) {
+        synchronized(connectionKeyPairLock) {
+            var connectionKeyPair = ConnectionKeyPair.loadFile(serverName)
+            if (connectionKeyPair != null) {
+                this.connectionKeyPair = connectionKeyPair
+                return
+            }
+        }
+        generateKeyPair(serverName)
+        println()
     }
 
     fun sendMessage(message: String) {
@@ -128,7 +141,7 @@ class WebsocketConnectionClient : WebSocketClient {
             }
             connectionKeyPair!!.encrypt(message)
         }
-        this.send(messageToSend)
+        this.send(MessageBase(computerName, messageToSend).toJson())
     }
 
     override fun onOpen(p0: ServerHandshake?) {
@@ -141,6 +154,13 @@ class WebsocketConnectionClient : WebSocketClient {
             return
         }
         val messageBase = MessageBase.fromJson(p0)
+        if (messageBase.name.isEmpty()) {
+            if (messageBase.msg.isEmpty()) {
+                return
+            }
+            getConnectionKeyPair(messageBase.msg)
+            return
+        }
         val message = synchronized(connectionKeyPairLock) {
             if (connectionKeyPair == null) {
                 connectionKeyPair = ConnectionKeyPair.loadFile(messageBase.name)
@@ -176,12 +196,12 @@ class WebsocketConnectionClient : WebSocketClient {
 
     // keyPair
     fun generateKeyPair(name: String) {
-        val connectionKeyPair = ConnectionKeyPair(name, computerName).generateKeyPair()
+        val connectionKeyPair = ConnectionKeyPair(name, name).generateKeyPair()
         val restMessageKeyExchange = RestMessageKeyExchange(
             keyOwner = computerName,
             keyAlias = computerName,
             keyCryptoMethode = connectionKeyPair.keyCryptoMethode,
-            publicKey = connectionKeyPair.ownPublicKey
+            privateKey = connectionKeyPair.ownPrivateKey
         )
         val urlString = "http://${applicationData.address}:${applicationData.port + 1}/key-exchange"
         try {
@@ -195,12 +215,13 @@ class WebsocketConnectionClient : WebSocketClient {
             val response = client.send(request, HttpResponse.BodyHandlers.ofString())
             val answer = response.body()
             val serverRestMessageKeyExchange = RestMessageKeyExchange.fromJson(answer)
-            connectionKeyPair.publicKeyTarget = serverRestMessageKeyExchange.publicKey
+            connectionKeyPair.privateKeyTarget = serverRestMessageKeyExchange.privateKey
             connectionKeyPair.saveKeyPair()
             this.connectionKeyPair = connectionKeyPair
         } catch (e: InterruptedException){
             Thread.currentThread().interrupt()
         } catch (e: Exception) {
+            e.printStackTrace()
             return
         }
 
