@@ -5,6 +5,7 @@ import connection.WebsocketConnectionClient
 import connection.WebsocketConnectionServer
 import filedata.ApplicationData
 import java.io.File
+import java.net.InetAddress
 
 class testServer {
     fun websocketServer(): WebsocketConnectionServer {
@@ -57,8 +58,9 @@ fun startServerWithGuiTest(){
 }
 
 fun testingServerScript(){
+    var name = InetAddress.getLocalHost().hostName
     GlobalVariables.appFolderName = File("data", "server").absolutePath
-    GlobalVariables.computerName = System.getenv("COMPUTERNAME")
+    GlobalVariables.computerName = name
     GlobalVariables.createFolders()
     // storing a class in a variable and create a class object from it
     val applicationData = ApplicationData.fromFile()

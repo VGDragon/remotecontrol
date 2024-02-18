@@ -88,7 +88,7 @@ class TaskListData(
             }
             val fileList = folder.listFiles()
             val taskListDataList = mutableListOf<TaskListData>()
-            for (file in fileList) {
+            for (file in fileList!!) {
                 if (file.isFile && file.name.endsWith(".json")) {
                     val json = file.readText()
                     val taskListData = fromJson(json)

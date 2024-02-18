@@ -5,6 +5,7 @@ import java.io.File
 import java.security.KeyPairGenerator
 import java.security.PrivateKey
 import java.security.PublicKey
+import java.security.Security
 import java.util.*
 import javax.crypto.Cipher
 
@@ -12,6 +13,7 @@ import javax.crypto.Cipher
 class ConnectionKeyPair (val keyOwner: String,
                          val keyAlias: String,
                          val keyCryptoMethode: String = ConnectionKeyPair.baseKeyCryptoMethode,
+                         val keyCryptoMethodeInstance: String = ConnectionKeyPair.baseKeyCryptoMethodeInstance,
                          val keySize: Int = 2048){
     var ownPublicKey: String = ""
     var ownPrivateKey: String = ""
@@ -29,20 +31,20 @@ class ConnectionKeyPair (val keyOwner: String,
         return this
     }
     fun encrypt(message: String): String {
-        val publicKey: PublicKey = java.security.KeyFactory.getInstance("RSA")
+        val publicKey: PublicKey = java.security.KeyFactory.getInstance(keyCryptoMethode)
             .generatePublic(java.security.spec.X509EncodedKeySpec(Base64.getDecoder().decode(ownPublicKey)))
 
-        val cipher = Cipher.getInstance(keyCryptoMethode)
+        val cipher = Cipher.getInstance(keyCryptoMethodeInstance)
         cipher.init(Cipher.ENCRYPT_MODE, publicKey)
         val encryptedBytes = cipher.doFinal(message.toByteArray(Charsets.UTF_8))
         return Base64.getEncoder().encodeToString(encryptedBytes)
     }
 
     fun decrypt(encryptedMessage: String): String {
-        val privateKey: PrivateKey = java.security.KeyFactory.getInstance("RSA")
+        val privateKey: PrivateKey = java.security.KeyFactory.getInstance(keyCryptoMethode)
             .generatePrivate(java.security.spec.PKCS8EncodedKeySpec(Base64.getDecoder().decode(privateKeyTarget)))
 
-        val cipher = Cipher.getInstance(keyCryptoMethode)
+        val cipher = Cipher.getInstance(keyCryptoMethodeInstance)
         cipher.init(Cipher.DECRYPT_MODE, privateKey)
         val decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(encryptedMessage))
         return String(decryptedBytes, Charsets.UTF_8)
@@ -71,6 +73,7 @@ class ConnectionKeyPair (val keyOwner: String,
             return Gson().fromJson(file.readText(), ConnectionKeyPair::class.java)
         }
         val baseKeyCryptoMethode = "RSA"
+        val baseKeyCryptoMethodeInstance = "RSA/ECB/OAEPWithSHA1AndMGF1Padding"
     }
 
 }

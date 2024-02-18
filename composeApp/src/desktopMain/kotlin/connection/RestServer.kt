@@ -51,6 +51,7 @@ class RestServer {
             keyOwner = GlobalVariables.computerName,
             keyAlias = GlobalVariables.computerName,
             keyCryptoMethode = restMessageKeyExchange.keyCryptoMethode,
+            keyCryptoMethodeInstance = restMessageKeyExchange.keyCryptoMethodeInstance,
             privateKey = connectionKeyPair.ownPrivateKey).toJson()
     }
 }

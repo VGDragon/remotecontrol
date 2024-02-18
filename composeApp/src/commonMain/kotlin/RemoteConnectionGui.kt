@@ -684,6 +684,7 @@ fun App() {
                                         applicationData.saveToFile()
                                     } else {
                                         try {
+                                            websocketConnectionClientTemp.setConnectionKeyPair()
                                             websocketConnectionClientTemp.sendMessage(
                                                 WebsocketMessageClient(
                                                     type = MessageClientRegister.TYPE,

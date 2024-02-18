@@ -1,22 +1,23 @@
 package connection
 
+
+import GlobalVariables
 import filedata.ApplicationData
 import interfaces.TaskInterface
 import messages.*
 import messages.base.MessageBase
-import messages.base.client.MessageClientRegister
 import messages.base.MessageServerResponseCode
 import messages.base.ServerAnswerStatus
+import messages.base.client.MessageClientRegister
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
-import java.lang.Exception
+import rest.message.RestMessageKeyExchange
 import java.net.URI
 
-
-import rest.message.RestMessageKeyExchange
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
 
 class WebsocketConnectionClient : WebSocketClient {
     val applicationData: ApplicationData
@@ -71,7 +72,8 @@ class WebsocketConnectionClient : WebSocketClient {
                 sendFrom = "",
                 sendTo = "",
                 data = MessageClientRegister(
-                    clientName = computerName
+                    clientName = computerName,
+                    isExecutable = executeTask
                 )
                     .toJson()
             )
@@ -201,19 +203,21 @@ class WebsocketConnectionClient : WebSocketClient {
             keyOwner = computerName,
             keyAlias = computerName,
             keyCryptoMethode = connectionKeyPair.keyCryptoMethode,
+            keyCryptoMethodeInstance = connectionKeyPair.keyCryptoMethodeInstance,
             privateKey = connectionKeyPair.ownPrivateKey
         )
         val urlString = "http://${applicationData.address}:${applicationData.port + 1}/key-exchange"
         try {
-
-            val client = HttpClient.newBuilder().build();
-            val request = HttpRequest.newBuilder()
-                .uri(URI.create(urlString))
-                //.header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(restMessageKeyExchange.toJson()))
+            val client = OkHttpClient()
+            val body: RequestBody = RequestBody.create(
+                "application/json".toMediaType(), restMessageKeyExchange.toJson())
+            val request = Request.Builder()
+                .url(urlString)
+                .post(body)
                 .build()
-            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-            val answer = response.body()
+
+            val response = client.newCall(request).execute()
+            val answer = response.body!!.string()
             val serverRestMessageKeyExchange = RestMessageKeyExchange.fromJson(answer)
             connectionKeyPair.privateKeyTarget = serverRestMessageKeyExchange.privateKey
             connectionKeyPair.saveKeyPair()

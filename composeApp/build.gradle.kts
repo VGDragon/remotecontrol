@@ -53,18 +53,17 @@ kotlin {
             // With compose.desktop.common you will also lose @Preview functionality
             // implementation(compose.desktop.currentOs)
             // add javax.websocket
-            implementation("com.squareup.okhttp3:okhttp:4.9.0")
+            //implementation("com.squareup.okhttp3:okhttp:4.9.0")
             implementation("com.neovisionaries:nv-websocket-client:2.3")
             implementation("org.java-websocket:Java-WebSocket:1.5.4")
 
             // Ktor dependencies websocket
-            implementation("io.ktor:ktor-server-netty:2.3.8")
             implementation("io.ktor:ktor-websockets:2.3.8")
-            implementation("io.ktor:ktor-client-okhttp:2.3.8")
+            //implementation("io.ktor:ktor-client-okhttp:2.3.8")
+            implementation("com.squareup.okhttp3:okhttp:4.12.0")
             // Ktor dependencies
-            implementation("io.ktor:ktor-server-core:2.3.8") // Ktor core features
-            implementation("io.ktor:ktor-gson:1.6.8") // Gson support for Ktor
-            implementation("io.ktor:ktor-serialization:2.3.8") // Optional: Serialization support for Ktor (if you prefer)
+            //implementation("io.ktor:ktor-server-core:2.3.8")
+            //implementation("io.ktor:ktor-serialization:2.3.8")
 
             // add json parser gson
             implementation("com.google.code.gson:gson:2.8.7") // TODO change to kotson or moshi
@@ -77,6 +76,7 @@ kotlin {
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
+            implementation("io.ktor:ktor-server-netty-jvm:2.3.8")
         }
 
     }
@@ -114,11 +114,11 @@ android {
     dependencies {
         debugImplementation(libs.compose.ui.tooling)
     }
-
     packagingOptions {
-        exclude("META-INF/INDEX.LIST")
-        exclude("META-INF/io.netty.versions.properties")
+        //exclude("META-INF/INDEX.LIST")
+        //exclude("META-INF/io.netty.versions.properties")
     }
+
 }
 dependencies {
     implementation(libs.play.services.location)
