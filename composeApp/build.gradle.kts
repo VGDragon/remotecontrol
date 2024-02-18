@@ -26,7 +26,7 @@ kotlin {
     repositories {
         mavenCentral()
         maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
-        //maven("https://oss.sonatype.org/content/repositories/snapshots/")
+        maven("https://oss.sonatype.org/content/repositories/snapshots/")
         google()
     }
     jvm("desktop")
@@ -113,6 +113,11 @@ android {
     }
     dependencies {
         debugImplementation(libs.compose.ui.tooling)
+    }
+
+    packagingOptions {
+        exclude("META-INF/INDEX.LIST")
+        exclude("META-INF/io.netty.versions.properties")
     }
 }
 dependencies {
