@@ -2,6 +2,7 @@ package tasks
 
 import connection.WebsocketConnectionClient
 import interfaces.TaskInterface
+import okhttp3.internal.wait
 import java.io.File
 import java.util.*
 
@@ -21,16 +22,14 @@ class TaskStartScript(
                 return
             }
             taskThread = Thread {
-                var process: Process? = null
+                var process: ProcessBuilder = ProcessBuilder()
                 try {
                     val scriptFile = File(GlobalVariables.scriptFolder(), scriptName)
                     val osName = System.getProperty("os.name").lowercase(Locale.getDefault())
                     if (osName.contains("windows")) {
-                        process = Runtime.getRuntime()
-                            .exec("cmd /c \"${scriptFile.absolutePath}\"")
+                        process = process.command("cmd", "/c", "\"${scriptFile.absolutePath}\"")
                     } else if (osName.contains("linux")) {
-                        process = Runtime.getRuntime()
-                            .exec("bash -c \"${scriptFile.absolutePath}\"")
+                        process = process.command("/bin/bash", "-c", "\"${scriptFile.absolutePath}\"")
                     } else if (osName.contains("mac")) {
                         //process = Runtime.getRuntime()
                         //    .exec("cmd /c start cmd.exe /K \"cd C:\\Users\\james\\Documents\\GitHub\\kotlin-websocket-bridge\\scripts && ${scriptName}.bat\"")
@@ -38,22 +37,19 @@ class TaskStartScript(
                     } else {
                         println("Unknown OS")
                     }
-                    process?.waitFor()
+                    val process_temp = process.start()
+                    while (process_temp.isAlive) {
+                        Thread.sleep(100)
+                    }
 
                 } catch (e: InterruptedException) {
                     e.printStackTrace()
-                    if (process != null) {
-                        val currentTime = System.currentTimeMillis()
-                        process.destroy()
-                        while (System.currentTimeMillis() - currentTime < 5000) {
-                            Thread.sleep(100)
-                        }
-                        process.destroyForcibly()
-                    }
                 }
+                println(scriptName + "was started")
                 if (nextTask != null) {
                     nextTask.start()
                 }
+                println(scriptName + " finished")
                 websocketConnectionClient.removeTask(this)
             }
             websocketConnectionClient.addTask(this)

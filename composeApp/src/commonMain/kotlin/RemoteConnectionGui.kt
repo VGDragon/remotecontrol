@@ -29,6 +29,7 @@ import org.jetbrains.compose.resources.ExperimentalResourceApi
 @Composable
 fun App() {
     // TODO: deactivate the disconnect button after disconnecting (if the server does it)
+    // TODO: if an task list is deleted, set a new index
     //var connectButtonText by remember { mutableStateOf("Connect") }
     //var disconnectButtonText by remember { mutableStateOf("Disconnect") }
 
