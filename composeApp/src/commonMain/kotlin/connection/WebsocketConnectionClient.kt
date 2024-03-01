@@ -16,6 +16,7 @@ import okhttp3.RequestBody
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
 import rest.message.RestMessageKeyExchange
+import java.io.File
 import java.net.URI
 
 
@@ -33,6 +34,7 @@ class WebsocketConnectionClient : WebSocketClient {
     val isRegisteredLock = Object()
     var isConnectionError: Boolean = false
     val isConnectionErrorLock = Object()
+    var onlyPrepareConnectionKeyPair = false
 
     // a list of clients that are connected to the server
     val execClientList: MutableList<String> = mutableListOf()
@@ -98,6 +100,17 @@ class WebsocketConnectionClient : WebSocketClient {
             }
             this.close()
         }
+    }
+
+    fun prepareConnection() {
+        this.connect()
+        waitForConnection()
+        if (getIsConnectionError()) {
+            println("Client: Connection error")
+            return
+        }
+        onlyPrepareConnectionKeyPair = true
+        setConnectionKeyPair()
     }
 
     fun waitForResponse(): MessageServerResponseCode {
@@ -222,6 +235,11 @@ class WebsocketConnectionClient : WebSocketClient {
             connectionKeyPair.privateKeyTarget = serverRestMessageKeyExchange.privateKey
             connectionKeyPair.saveKeyPair()
             this.connectionKeyPair = connectionKeyPair
+            if(onlyPrepareConnectionKeyPair){
+                val keyJsonFile = File(GlobalVariables.keyPairsFolder() + "/$name.json")
+                keyJsonFile.writeText(this.computerName)
+                this.close()
+            }
         } catch (e: InterruptedException){
             Thread.currentThread().interrupt()
         } catch (e: Exception) {

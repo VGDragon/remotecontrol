@@ -58,6 +58,17 @@ fun startServerWithGuiTest(){
 }
 
 fun testingServerScript(){
+    GlobalVariables.appFolderName = File("data", "server").absolutePath
+    val applicationsData = ApplicationData.fromFile()
+    if (applicationsData.computerName.isEmpty()){
+        val name = InetAddress.getLocalHost().hostName
+        applicationsData.computerName = name
+        applicationsData.saveToFile()
+        GlobalVariables.computerName = applicationsData.computerName
+    } else {
+        GlobalVariables.computerName = applicationsData.computerName
+    }
+
     var name = InetAddress.getLocalHost().hostName
     GlobalVariables.appFolderName = File("data", "server").absolutePath
     GlobalVariables.computerName = name

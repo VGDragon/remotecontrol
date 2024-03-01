@@ -12,26 +12,50 @@ import java.net.InetAddress
 
 fun main(args: Array<String>) {
 
-    var name = InetAddress.getLocalHost().hostName
-    GlobalVariables.computerName = name
 
     if (args.isNotEmpty()) {
         val startType = args[0]
-        if (startType == "--help"){
-            println("you search for 'prepare'")
+        if (startType.equals("--help", ignoreCase = true)){
+            println("prepare")
+            println("key [client_name]")
             return
         }
-        if (startType == "prepare") {
+        if (startType.equals("prepare", ignoreCase = true)) {
             GlobalVariables.createFolders()
             ApplicationData.fromFile()
+            return
+        } else if (startType.equals("key", ignoreCase = true)){
+            if (args.size < 2){
+                println("key [client_name]")
+                return
+            }
+            GlobalVariables.keyPairsFolder = "prepared_keypairs"
+            GlobalVariables.crateKeyPairsFolder()
+            val applicationData= ApplicationData.fromFile()
+            applicationData.isClient = true
+            applicationData.exec = true
+            applicationData.isServer = false
+            applicationData.computerName = args[1]
+            val websocketConnectionClient = WebsocketConnectionClient(applicationData, true)
+
+            websocketConnectionClient.connectAndRegister(doJoin = true)
             return
         } else {
             println("Unknown start type")
             return
         }
     }
+
     GlobalVariables.createFolders()
     val applicationData = ApplicationData.fromFile()
+    if (applicationData.computerName.isEmpty()){
+        val name = InetAddress.getLocalHost().hostName
+        applicationData.computerName = name
+        applicationData.saveToFile()
+        GlobalVariables.computerName = applicationData.computerName
+    } else {
+        GlobalVariables.computerName = applicationData.computerName
+    }
 
     if (applicationData.isServer) {
         val websocketConnectionServer = WebsocketConnectionServer(applicationData)

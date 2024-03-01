@@ -10,6 +10,8 @@ class ApplicationData{
     var isServer: Boolean = false
     var isClient: Boolean = true
     var exec: Boolean = false
+    var computerName: String = ""
+
     init {
         if (apiKey.isEmpty()){
             // create a new api key

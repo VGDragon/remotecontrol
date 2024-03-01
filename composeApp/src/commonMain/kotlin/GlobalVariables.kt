@@ -5,7 +5,7 @@ class GlobalVariables {
         val applicationDataFile: String = "data.json"
         val scriptFolder: String = "scripts"
         val taskFolder: String = "tasks"
-        val keyPairsFolder = "keypairs"
+        var keyPairsFolder = "keypairs"
         var computerName: String = ""
 
         var appFolderName = File("").absolutePath
@@ -20,6 +20,12 @@ class GlobalVariables {
         }
         fun keyPairsFolder(): String {
             return File(appFolderName, keyPairsFolder).absolutePath
+        }
+        fun crateKeyPairsFolder(){
+            val keyPairsFolder = File(keyPairsFolder())
+            if (!keyPairsFolder.exists()){
+                keyPairsFolder.mkdirs()
+            }
         }
         fun createFolders(){
             val scriptFolder = File(scriptFolder())

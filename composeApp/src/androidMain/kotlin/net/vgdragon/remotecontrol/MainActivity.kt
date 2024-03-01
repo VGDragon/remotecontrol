@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
+import filedata.ApplicationData
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,13 +27,18 @@ class MainActivity : ComponentActivity() {
                     this,
                     Manifest.permission.BLUETOOTH_CONNECT
                 ) == PackageManager.PERMISSION_GRANTED
-            )
+            ){
                 println("ok")
-            //val name = android.bluetooth.BluetoothAdapter.getDefaultAdapter().name
-            val name = (getSystemService(BluetoothManager::class.java) as BluetoothManager).adapter.name
-            // get device name
-            GlobalVariables.computerName = name
-
+            }
+            val applicationsData = ApplicationData.fromFile()
+            if (applicationsData.computerName.isEmpty()){
+                val name = (getSystemService(BluetoothManager::class.java) as BluetoothManager).adapter.name
+                applicationsData.computerName = name
+                applicationsData.saveToFile()
+                GlobalVariables.computerName = applicationsData.computerName
+            } else {
+                GlobalVariables.computerName = applicationsData.computerName
+            }
             App()
         }
     }

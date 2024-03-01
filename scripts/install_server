@@ -1,0 +1,11 @@
+:<<"::CMDLITERAL"
+@ECHO OFF
+GOTO :CMDSCRIPT
+::CMDLITERAL
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+cd $SCRIPT_DIR
+./install_server.sh
+
+exit $?
+:CMDSCRIPT
+./install_server.bat
