@@ -58,8 +58,6 @@ class WebsocketClientMessageHandler(val applicationData: ApplicationData) {
                 }
             }
             MessageClientScriptList.TYPE -> {
-                println("Client: Script list received")
-
                 ws.sendMessage(WebsocketMessageClient(
                     type = MessageServerResponseCode.TYPE,
                     apiKey = ws.applicationData.apiKey,
@@ -67,6 +65,7 @@ class WebsocketClientMessageHandler(val applicationData: ApplicationData) {
                     sendTo = message.sendFrom,
                     data = MessageServerResponseCode(ServerAnswerStatus.OK, getScriptList()).toJson()
                 ).toJson())
+                println("Client: Script list send")
             }
 
             else -> {

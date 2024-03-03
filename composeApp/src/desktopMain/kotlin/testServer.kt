@@ -25,8 +25,12 @@ class testServer {
         val applicationData = ApplicationData.fromFile()
         val ws = WebsocketConnectionServer(applicationData)
         ws.start()
-        while (ws.getKeepRunning()) {
-            Thread.sleep(1000)
+        while (true){
+            try {
+                Thread.sleep(1000)
+            } catch (e: InterruptedException){
+               break
+            }
         }
         ws.stop()
     }

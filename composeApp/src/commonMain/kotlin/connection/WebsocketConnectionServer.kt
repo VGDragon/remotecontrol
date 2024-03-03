@@ -95,7 +95,14 @@ class WebsocketConnectionServer : WebSocketServer {
     }
 
     override fun onError(p0: WebSocket?, p1: Exception?) {
-
+        println("Server: Error")
+        if (p1 != null) {
+            p1.printStackTrace()
+        }
+        if (p0 == null) {
+            return
+        }
+        p0.close()
     }
 
     override fun onStart() {
@@ -126,17 +133,6 @@ class WebsocketConnectionServer : WebSocketServer {
     }
 
     // getters and setters
-    fun getKeepRunning(): Boolean {
-        synchronized(keepWsRunningLock) {
-            return keepWsRunning
-        }
-    }
-
-    fun setKeepRunning(value: Boolean) {
-        synchronized(keepWsRunningLock) {
-            keepWsRunning = value
-        }
-    }
 
     fun getClientRegisteredNames(): List<String> {
         synchronized(clientTaskRunningPermissionLock) {

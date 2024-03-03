@@ -72,25 +72,25 @@ class ConnectionKeyPair (val keyOwner: String,
         }
         return decryptedMessageList.joinToString(separator = "")
     }
-    fun saveKeyPair(){
+    fun saveKeyPair(fileEnding: String = ""){
         // Save the key pair to a file
         val folder = File(GlobalVariables.keyPairsFolder())
         if (!folder.exists()) {
             folder.mkdirs()
         }
-        val file = File(GlobalVariables.keyPairsFolder(), keyAlias)
+        val file = File(GlobalVariables.keyPairsFolder(), keyAlias + fileEnding)
         file.writeText(Gson().toJson(this))
     }
-    fun deleteKeyPair(){
-        val file = File(GlobalVariables.keyPairsFolder(), keyAlias)
+    fun deleteKeyPair(fileEnding: String = ""){
+        val file = File(GlobalVariables.keyPairsFolder(), keyAlias + fileEnding)
         if (file.exists()){
             file.delete()
         }
     }
 
     companion object {
-        fun loadFile(keyAlias: String): ConnectionKeyPair? {
-            val file = File(GlobalVariables.keyPairsFolder(), keyAlias)
+        fun loadFile(keyAlias: String, fileEnding: String = ""): ConnectionKeyPair? {
+            val file = File(GlobalVariables.keyPairsFolder(), keyAlias + fileEnding)
             if (!file.exists())
                 return null
             return Gson().fromJson(file.readText(), ConnectionKeyPair::class.java)

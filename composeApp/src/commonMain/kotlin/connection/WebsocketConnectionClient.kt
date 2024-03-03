@@ -25,8 +25,6 @@ class WebsocketConnectionClient : WebSocketClient {
     var websocketClientMessageHandler: WebsocketClientMessageHandler
     var connectionKeyPair: ConnectionKeyPair? = null
     val connectionKeyPairLock = Object()
-    var keepWsRunning = true
-    var keepWsRunningLock = Object()
     val executeTask: Boolean
     var isConnected: Boolean
     val isConnectedLock = Object()
@@ -127,7 +125,6 @@ class WebsocketConnectionClient : WebSocketClient {
     }
 
     fun stopConnection() {
-        setKeepRunning(false)
         this.close()
     }
 
@@ -146,7 +143,6 @@ class WebsocketConnectionClient : WebSocketClient {
             }
         }
         generateKeyPair(serverName)
-        println()
     }
 
     fun sendMessage(message: String) {
@@ -196,14 +192,13 @@ class WebsocketConnectionClient : WebSocketClient {
 
     override fun onClose(p0: Int, p1: String?, p2: Boolean) {
         println("Client: Closed connection")
-        Thread.sleep(1000)
-        if (getKeepRunning()) {
-            connect()
-        }
     }
 
     override fun onError(p0: Exception?) {
         println("Client: Error")
+        if (p0 != null) {
+            p0.printStackTrace()
+        }
         if (!getIsConnected()) {
             setIsConnectionError(true)
         }
@@ -233,12 +228,13 @@ class WebsocketConnectionClient : WebSocketClient {
             val answer = response.body!!.string()
             val serverRestMessageKeyExchange = RestMessageKeyExchange.fromJson(answer)
             connectionKeyPair.privateKeyTarget = serverRestMessageKeyExchange.privateKey
-            connectionKeyPair.saveKeyPair()
-            this.connectionKeyPair = connectionKeyPair
             if(onlyPrepareConnectionKeyPair){
-                val keyJsonFile = File(GlobalVariables.keyPairsFolder() + "/$name.json")
-                keyJsonFile.writeText(this.computerName)
+                connectionKeyPair.saveKeyPair(fileEnding = "." +this.computerName)
+                this.connectionKeyPair = connectionKeyPair
                 this.close()
+            } else {
+                connectionKeyPair.saveKeyPair()
+                this.connectionKeyPair = connectionKeyPair
             }
         } catch (e: InterruptedException){
             Thread.currentThread().interrupt()
@@ -250,18 +246,6 @@ class WebsocketConnectionClient : WebSocketClient {
     }
 
     // getters and setters
-
-    fun getKeepRunning(): Boolean {
-        synchronized(keepWsRunningLock) {
-            return keepWsRunning
-        }
-    }
-
-    fun setKeepRunning(value: Boolean) {
-        synchronized(keepWsRunningLock) {
-            keepWsRunning = value
-        }
-    }
 
     fun getIsConnected(): Boolean {
         synchronized(isConnectedLock) {

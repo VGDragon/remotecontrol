@@ -36,9 +36,15 @@ fun main(args: Array<String>) {
             applicationData.exec = true
             applicationData.isServer = false
             applicationData.computerName = args[1]
+            GlobalVariables.computerName = applicationData.computerName
             val websocketConnectionClient = WebsocketConnectionClient(applicationData, true)
-
-            websocketConnectionClient.connectAndRegister(doJoin = true)
+            if(GlobalVariables.preparedKeyPairExists(websocketConnectionClient.computerName)){
+                println("Key pairs already exist")
+                return
+            }
+            print("generate key pairs: ")
+            websocketConnectionClient.prepareConnection()
+            println("done")
             return
         } else {
             println("Unknown start type")
@@ -63,7 +69,12 @@ fun main(args: Array<String>) {
         restServer.start(wait = false)
         websocketConnectionServer.start()
         while (true) {
-            Thread.sleep(1000)
+            try {
+                Thread.sleep(1000)
+            } catch (e: InterruptedException) {
+                return
+            }
+
         }
     } else if(applicationData.exec && applicationData.isClient){
         val scriptFolderFile = File(GlobalVariables.scriptFolder())

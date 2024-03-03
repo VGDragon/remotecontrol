@@ -41,5 +41,23 @@ class GlobalVariables {
                 keyPairsFolder.mkdirs()
             }
         }
+
+        fun preparedKeyPairExists(computerName: String): Boolean {
+            val seach_folder = File(keyPairsFolder())
+            if (seach_folder.exists()){
+                val files = seach_folder.listFiles()
+                if (files != null){
+                    for (file in files){
+                        if (!file.isFile){
+                            continue
+                        }
+                        if (file.name.endsWith(".${computerName}")){
+                            return true
+                        }
+                    }
+                }
+            }
+            return false
+        }
     }
 }
