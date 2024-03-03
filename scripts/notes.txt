@@ -1,0 +1,4 @@
+
+# giving a script permissions to run sudo without password
+# /etc/sudoers.d/remotecontrol
+remotecontrol ALL=(ALL) NOPASSWD: /apps/remotecontrol/scripts/wake_up_pc.sh

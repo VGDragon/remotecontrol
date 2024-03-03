@@ -229,7 +229,7 @@ class WebsocketConnectionClient : WebSocketClient {
             val serverRestMessageKeyExchange = RestMessageKeyExchange.fromJson(answer)
             connectionKeyPair.privateKeyTarget = serverRestMessageKeyExchange.privateKey
             if(onlyPrepareConnectionKeyPair){
-                connectionKeyPair.saveKeyPair(fileEnding = "." +this.computerName)
+                connectionKeyPair.saveKeyPair(fileEnding = "." + this.computerName.substring(0, this.computerName.length - "_executable".length))
                 this.connectionKeyPair = connectionKeyPair
                 this.close()
             } else {

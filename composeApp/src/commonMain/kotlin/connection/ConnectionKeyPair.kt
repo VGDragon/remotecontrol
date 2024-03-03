@@ -54,7 +54,7 @@ class ConnectionKeyPair (val keyOwner: String,
             messageList.add(Base64.getEncoder().encodeToString(encryptedBytes))
         }
         // crate string from the messageList
-        return messageList.joinToString(separator = "\n")
+        return messageList.joinToString(separator = " \n")
     }
 
     fun decrypt(encryptedMessage: String): String {
@@ -64,7 +64,7 @@ class ConnectionKeyPair (val keyOwner: String,
         val cipher = Cipher.getInstance(keyCryptoMethodeInstance)
         cipher.init(Cipher.DECRYPT_MODE, privateKey)
         // cut message
-        val messageList = encryptedMessage.split("\n")
+        val messageList = encryptedMessage.split(" \n")
         val decryptedMessageList: MutableList<String> = mutableListOf()
         for (tempEncryptedMessage in messageList){
             val decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(tempEncryptedMessage))
