@@ -1,10 +1,30 @@
 #!/bin/bash
+
+# getting the current directory
+CURRENT_DIR="$(PWD)"
+
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 cd $SCRIPT_DIR
+KEY_TO_BE_USED="${CURRENT_DIR}/${1}"
+
+# if no or wrong parameters are passed, exit
+if [ -z "$KEY_TO_BE_USED" ]; then
+  echo "No key to be used was passed. Exiting."
+  exit 1
+fi
+if [ ! -f "$KEY_TO_BE_USED" ]; then
+  echo "The key to be used does not exist. Exiting."
+  exit 1
+fi
+
+KEY_SERVER_NAME=$(basename -- "$KEY_TO_BE_USED")
+# getting the file extension
+KEY_CLIENT_NAME="${KEY_SERVER_NAME##*.}"
+
+
 TARGET_DIR="/apps/remotecontrol"
 TARGET_EXECUTE_CLIENT_DIR="${TARGET_DIR}/exec_client"
 KEYPAIRS_DIR="${TARGET_DIR}/keypairs"
-PREPARED_KEYPAIRS_DIR="${SCRIPT_DIR}/prepared_keypairs"
 USER_NAME="remotecontrol"
 
 if id -u "$USER_NAME" >/dev/null 2>&1; then
@@ -32,17 +52,8 @@ sed -i 's/"exec":false/"exec":true/g' "${TARGET_EXECUTE_CLIENT_DIR}/dara.json"
 # prepare the server
 /usr/lib/jvm/java-21-openjdk-amd64/bin/java -jar /apps/remotcontrol/remotecontrol.jar prepare
 
-# look for .txt files in the prepared_keypairs directory
-for file in "${PREPARED_KEYPAIRS_DIR}"/*.txt; do
-  # get the filename without the extension
-  filename=$(basename -- "$file")
-  # if filename exists in the keypairs directory, copy to KEYPAIRS_DIR
-  if [ -f "${KEYPAIRS_DIR}/${filename}" ]; then
-    cp "${PREPARED_KEYPAIRS_DIR}/${filename}" "${KEYPAIRS_DIR}/${filename}"
-    sed -i 's/"computerName":""/"computerName":"${filename}"/g' "${TARGET_SERVER_DIR}/dara.json"
-  fi
-done
-
+cp "${KEY_TO_BE_USED}" "${KEYPAIRS_DIR}/${KEY_SERVER_NAME}"
+sed -i 's/"computerName":""/"computerName":"'"${KEY_CLIENT_NAME}"'"/g' "${TARGET_SERVER_DIR}/dara.json"
 
 # set the permissions
 chmod -R 777 "${TARGET_DIR}"
