@@ -4,7 +4,7 @@ import messages.base.MessageBase
 import org.java_websocket.WebSocket
 import kotlin.random.Random
 
-class BadClientHandler (val p0: WebSocket, val messageNumber: Int){
+class BadClientHandler (val p0: WebSocket, var messageNumber: Int){
 
     companion object {
 
@@ -20,17 +20,24 @@ class BadClientHandler (val p0: WebSocket, val messageNumber: Int){
             }
             Thread.sleep(1000)
             synchronized(badClientMapLock) {
+                badClient.messageNumber++
                 if (badClient.messageNumber > 100) {
                     p0.close()
                     return
                 }
                 if (badClient.messageNumber == 0) {
-                    p0.send(MessageBase(GlobalVariables.computerName, "Hi").toJson())
+                    p0.send(MessageBase(GlobalVariables.computerName,
+                        "Hi",
+                        badClient.messageNumber.toLong()).toJson())
                 }
                 if (Random.nextBoolean()) {
-                    p0.send(MessageBase(GlobalVariables.computerName, "Done").toJson())
+                    p0.send(MessageBase(GlobalVariables.computerName,
+                        "Done",
+                        badClient.messageNumber.toLong()).toJson())
                 } else {
-                    p0.send(MessageBase(GlobalVariables.computerName, "Error").toJson())
+                    p0.send(MessageBase(GlobalVariables.computerName,
+                        "Error",
+                        badClient.messageNumber.toLong()).toJson())
                 }
             }
         }

@@ -51,7 +51,7 @@ fun main(args: Array<String>) {
             return
         }
     }
-
+    GlobalVariables.jarFolder = File(GlobalVariables.applicationFolderName).absoluteFile.parentFile.absolutePath
     GlobalVariables.createFolders()
     val applicationData = ApplicationData.fromFile()
     if (applicationData.computerName.isEmpty()){
@@ -62,7 +62,9 @@ fun main(args: Array<String>) {
     } else {
         GlobalVariables.computerName = applicationData.computerName
     }
-
+    GlobalVariables.jarName = File(applicationData.jarFilePath).name
+    GlobalVariables.jarFolder = File(applicationData.jarFilePath).parentFile.absolutePath
+    GlobalVariables.createUpdateFolder()
     if (applicationData.isServer) {
         val websocketConnectionServer = WebsocketConnectionServer(applicationData)
         val restServer = RestServer().build(applicationData.port + 1)
@@ -81,8 +83,21 @@ fun main(args: Array<String>) {
         if (!scriptFolderFile.exists()){
             scriptFolderFile.mkdirs()
         }
-        val websocketConnectionClient = WebsocketConnectionClient(applicationData, true)
-        websocketConnectionClient.connectAndRegister()
+        while (true){
+            try {
+                val websocketConnectionClient = WebsocketConnectionClient(applicationData, true)
+                websocketConnectionClient.connectAndRegister()
+                if (websocketConnectionClient.isClosed ){
+                    if (websocketConnectionClient.isConnectionError){
+                        return
+                    }
+                    Thread.sleep(1000)
+                    continue
+                }
+            } catch (e: InterruptedException) {
+                return
+            }
+        }
     } else if(applicationData.isClient) {
         application {
             Window(onCloseRequest = ::exitApplication) {

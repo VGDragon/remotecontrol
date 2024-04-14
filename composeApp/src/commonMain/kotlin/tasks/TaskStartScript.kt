@@ -1,5 +1,6 @@
 package tasks
 
+import GlobalVariables
 import connection.WebsocketConnectionClient
 import interfaces.TaskInterface
 import okhttp3.internal.wait
@@ -25,12 +26,12 @@ class TaskStartScript(
                 var process: ProcessBuilder = ProcessBuilder()
                 try {
                     val scriptFile = File(GlobalVariables.scriptFolder(), scriptName)
-                    val osName = System.getProperty("os.name").lowercase(Locale.getDefault())
-                    if (osName.contains("windows")) {
+                    val osName = GlobalVariables.pcOS()
+                    if (osName == OsType.WINDOWS) {
                         process = process.command("cmd", "/c", "\"${scriptFile.absolutePath}\"")
-                    } else if (osName.contains("linux")) {
+                    } else if (osName == OsType.LINUX) {
                         process = process.command("/bin/bash", "-c", "\"${scriptFile.absolutePath}\"")
-                    } else if (osName.contains("mac")) {
+                    } else if (osName == OsType.MAC) {
                         //process = Runtime.getRuntime()
                         //    .exec("cmd /c start cmd.exe /K \"cd C:\\Users\\james\\Documents\\GitHub\\kotlin-websocket-bridge\\scripts && ${scriptName}.bat\"")
                         println("Mac OS not supported")

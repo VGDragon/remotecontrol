@@ -2,6 +2,8 @@ package filedata
 
 import GlobalVariables
 import com.google.gson.Gson
+import io.ktor.util.*
+import java.io.File
 
 class ApplicationData{
     var apiKey: String = ""
@@ -11,6 +13,7 @@ class ApplicationData{
     var isClient: Boolean = true
     var exec: Boolean = false
     var computerName: String = ""
+    var jarFilePath: String = GlobalVariables.jarPath()
 
     init {
         if (apiKey.isEmpty()){

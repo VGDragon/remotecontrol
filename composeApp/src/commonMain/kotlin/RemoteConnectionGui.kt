@@ -701,6 +701,7 @@ fun App() {
                                                     .toJson()
                                             )
                                             websocketConnectionClientTemp.waitForResponse()
+                                            websocketConnectionClientTemp.pingPong()
                                             websocketConnectionClientTemp.sendMessage(
                                                 WebsocketMessageClient(
                                                     type = MessageClientClientList.TYPE,

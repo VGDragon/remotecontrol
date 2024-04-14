@@ -3,14 +3,14 @@ package connection
 import filedata.ApplicationData
 import GlobalVariables
 import TaskFunctions
-import interfaces.TaskInterface
-import interfaces.TaskMessageInterface
+import filedata.SoftwareUpdate
+import filedata.UpdateStatus
 import messages.*
 import messages.base.*
 import messages.base.client.MessageClientScriptList
 import messages.base.server.MessageServerClientList
+import messages.base.server.MessageServerUpdate
 import java.io.File
-import java.util.*
 
 class WebsocketClientMessageHandler(val applicationData: ApplicationData) {
     // can be used without creating an instance of the class
@@ -23,6 +23,9 @@ class WebsocketClientMessageHandler(val applicationData: ApplicationData) {
 
             "error" -> {
                 println("Client: Error received")
+            }
+            "pong" -> {
+                //println("Client: Pong received")
             }
 
             MessageServerClientList.TYPE -> {
@@ -67,6 +70,29 @@ class WebsocketClientMessageHandler(val applicationData: ApplicationData) {
                 ).toJson())
                 println("Client: Script list send")
             }
+            MessageServerUpdate.TYPE -> {
+                val messageServerUpdate = MessageServerUpdate.fromJson(message.data)
+                synchronized(ws.updateDataLock){
+                    if (ws.softwareUpdate == null){
+                        ws.softwareUpdate = SoftwareUpdate.fromServerMessage(messageServerUpdate)
+                    }
+                    if (ws.doSoftwareUpdateDataExist(messageServerUpdate.version)){
+                        println("Update already installed for version ${messageServerUpdate.version}")
+                        return
+                    }
+                    ws.softwareUpdate!!.writeFilePart(messageServerUpdate)
+
+                    if (ws.softwareUpdate!!.updateStatus == UpdateStatus.FINISHED){
+                        ws.softwareUpdate!!.startUpdate()
+                        return
+                    }
+                    if (ws.softwareUpdate!!.updateStatus == UpdateStatus.ERROR) {
+                        println("Client: Update error")
+                        ws.updatePackageNrs = 0L
+                        ws.softwareUpdate = null
+                    }
+                }
+            }
 
             else -> {
                 println("Client: Unknown message type received")
@@ -95,12 +121,12 @@ class WebsocketClientMessageHandler(val applicationData: ApplicationData) {
         return scriptList
     }
     fun isScriptFile(file: File): Boolean {
-        val osName = System.getProperty("os.name").lowercase(Locale.getDefault())
-        if (osName.contains("windows")) {
+        val osName = GlobalVariables.pcOS()
+        if (osName == OsType.WINDOWS) {
             return file.extension == "bat"
-        } else if (osName.contains("linux")) {
+        } else if (osName == OsType.LINUX) {
             return file.extension == "sh"
-        } else if (osName.contains("mac")) {
+        } else if (osName == OsType.MAC) {
             return file.extension == "sh"
         } else {
             println("Unknown OS")

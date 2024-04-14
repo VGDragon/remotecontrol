@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
             if (!fileDir.endsWith("/")){
                 fileDir += "/"
             }
-            GlobalVariables.appFolderName = fileDir
+            GlobalVariables.applicationFolderName = fileDir
             GlobalVariables.createFolders()
             if (ActivityCompat.checkSelfPermission(
                     this,

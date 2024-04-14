@@ -4,7 +4,7 @@ import java.io.File
 
 
 fun testStartScript() {
-    GlobalVariables.appFolderName = File("data", "test_script").absolutePath
+    GlobalVariables.applicationFolderName = File("data", "test_script").absolutePath
     GlobalVariables.keyPairsFolder = "prepared_keypairs"
     GlobalVariables.crateKeyPairsFolder()
     val applicationData = ApplicationData.fromFile()

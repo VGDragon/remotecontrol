@@ -32,7 +32,18 @@ class WebsocketServerMessageHandler(val applicationData: ApplicationData) {
                 println("Server: Error received")
                 Thread.sleep(1000)
             }
-
+            "ping" -> {
+                //println("Server: Ping received")
+                Thread.sleep(1000)
+                websocketConnectionServer.sendMessage(
+                    ws = ws,
+                    message = WebsocketMessageServer(
+                        type = "pong",
+                        sendFrom = "",
+                        data = ""
+                    ).toJson()
+                )
+            }
             MessageClientRegister.TYPE -> {
                 val registerMessage = MessageClientRegister.fromJson(message.data)
 
