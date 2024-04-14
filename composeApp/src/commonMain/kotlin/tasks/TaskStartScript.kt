@@ -3,9 +3,7 @@ package tasks
 import GlobalVariables
 import connection.WebsocketConnectionClient
 import interfaces.TaskInterface
-import okhttp3.internal.wait
 import java.io.File
-import java.util.*
 
 class TaskStartScript(
     val scriptName: String,

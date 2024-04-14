@@ -164,6 +164,7 @@ class WebsocketConnectionServer : WebSocketServer {
 
     override fun onStart() {
         startPingPong()
+        updateJarThread()
     }
 
 

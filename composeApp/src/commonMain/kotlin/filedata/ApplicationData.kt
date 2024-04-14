@@ -2,7 +2,6 @@ package filedata
 
 import GlobalVariables
 import com.google.gson.Gson
-import io.ktor.util.*
 import java.io.File
 
 class ApplicationData{
@@ -29,7 +28,7 @@ class ApplicationData{
 
     fun saveToFile(): ApplicationData {
         // save the api key to a file
-        val file = java.io.File(GlobalVariables.applicationDataFile())
+        val file = File(GlobalVariables.applicationDataFile())
         file.writeText(this.toJson())
         return this
     }
@@ -38,7 +37,7 @@ class ApplicationData{
             return Gson().fromJson(json, ApplicationData::class.java)
         }
         fun fromFile(): ApplicationData {
-            val file = java.io.File(GlobalVariables.applicationDataFile())
+            val file = File(GlobalVariables.applicationDataFile())
             if (file.exists()){
                 val json = file.readText()
                 return fromJson(json)

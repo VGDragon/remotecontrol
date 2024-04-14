@@ -168,7 +168,7 @@ class WebsocketConnectionClient : WebSocketClient {
     }
     fun getConnectionKeyPair(serverName: String) {
         synchronized(connectionKeyPairLock) {
-            var connectionKeyPair = ConnectionKeyPair.loadFile(serverName)
+            val connectionKeyPair = ConnectionKeyPair.loadFile(serverName)
             if (connectionKeyPair != null) {
                 this.connectionKeyPair = connectionKeyPair
                 return

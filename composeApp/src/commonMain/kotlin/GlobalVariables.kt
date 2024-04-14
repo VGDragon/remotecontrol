@@ -1,4 +1,3 @@
-import io.ktor.util.*
 import java.io.File
 import java.security.MessageDigest
 import java.util.*
@@ -15,8 +14,8 @@ class GlobalVariables {
         val pingPongDelayTime: Long = 1000L
         val messageHistorySize = 20
 
-        val execClientServiceName = "remotecontrol_exec_client.service"
-        val serverServiceName = "remotecontrol_server.service"
+        //val execClientServiceName = "remotecontrol_exec_client.service"
+        //val serverServiceName = "remotecontrol_server.service"
 
         var applicationFolderName = File("").absolutePath
         var jarName: String = "remotecontrol.jar"

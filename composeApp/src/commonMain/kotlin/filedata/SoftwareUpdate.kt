@@ -2,10 +2,8 @@ package filedata
 
 import GlobalVariables
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import messages.base.server.MessageServerUpdate
 import okio.ByteString.Companion.toByteString
-import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
 
@@ -18,7 +16,7 @@ class SoftwareUpdate (
     var partAmount: Long = -1L
     var currentpart: Long = 0L
 
-    var updateFile: File? = null
+    //var updateFile: File? = null
     var partSize: Long = GlobalVariables.jarMaxTransferSize
     var inputStream: FileInputStream? = null
     var readBuffer: ByteArray = ByteArray(GlobalVariables.jarMaxTransferSize.toInt())
