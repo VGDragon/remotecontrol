@@ -10,39 +10,32 @@ import org.java_websocket.WebSocket
 
 class WebsocketServerMessageHandler(val applicationData: ApplicationData) {
     // can be used without creating an instance of the class
-    fun handle(websocketConnectionServer: WebsocketConnectionServer, ws: WebSocket, message: WebsocketMessageClient) {
+    fun handle(
+        websocketConnectionServer: WebsocketConnectionServer,
+        ws: WebSocket,
+        message: WebsocketMessageClient): String? {
         if (message.apiKey != applicationData.apiKey) {
             println("Server: Invalid API key received")
-            websocketConnectionServer.sendMessage(
-                ws = ws,
-                message = MessageServerResponseCode.toJson(ServerAnswerStatus.INVALID_API_KEY, "Invalid API key")
-            )
-            ws.close()
+            //ws.close()
+            return null
         }
         when (message.type) {
             "message" -> {
                 println("Server: Message received")
-                Thread.sleep(1000)
-                websocketConnectionServer.sendMessage(
-                    ws = ws,
-                    message = MessageServerResponseCode.toJson(ServerAnswerStatus.OK, ""))
+                return MessageServerResponseCode.toJson(ServerAnswerStatus.OK, "")
             }
 
             "error" -> {
                 println("Server: Error received")
-                Thread.sleep(1000)
+                return null
             }
             "ping" -> {
-                //println("Server: Ping received")
-                Thread.sleep(1000)
-                websocketConnectionServer.sendMessage(
-                    ws = ws,
-                    message = WebsocketMessageServer(
+                println("Server: Ping received")
+                return WebsocketMessageServer(
                         type = "pong",
                         sendFrom = "",
                         data = ""
                     ).toJson()
-                )
             }
             MessageClientRegister.TYPE -> {
                 val registerMessage = MessageClientRegister.fromJson(message.data)
@@ -51,10 +44,8 @@ class WebsocketServerMessageHandler(val applicationData: ApplicationData) {
                     websocketConnectionServer.setClientRegisterItem(registerMessage.clientName, ws)
                 }
                 websocketConnectionServer.setClientConnectedItem(registerMessage.clientName, ws)
-                websocketConnectionServer.sendMessage(
-                    ws = ws,
-                    message = MessageServerResponseCode.toJson(ServerAnswerStatus.OK, ""))
                 println("Server: Client registered: ${registerMessage.clientName}")
+                return MessageServerResponseCode.toJson(ServerAnswerStatus.OK, "")
             }
 
             MessageClientClientList.TYPE -> {
@@ -66,9 +57,7 @@ class WebsocketServerMessageHandler(val applicationData: ApplicationData) {
                     sendFrom = message.sendFrom,
                     data = messageClientList.toJson()
                 )
-                websocketConnectionServer.sendMessage(
-                    ws = ws,
-                    message = clientListMessage.toJson())
+                return clientListMessage.toJson()
             }
 
             MessageStartTask.TYPE -> {
@@ -76,24 +65,25 @@ class WebsocketServerMessageHandler(val applicationData: ApplicationData) {
                     .getClientRegisterItem(message.sendTo)
                 if (connectedWs == null) {
                     println("Server: Client not found")
-                    websocketConnectionServer.sendMessage(
-                        ws = ws,
-                        message = MessageServerResponseCode.toJson(ServerAnswerStatus.CLIENT_NOT_FOUND, "Client not found")
-                    )
-                    return
+                    return  MessageServerResponseCode.toJson(
+                        ServerAnswerStatus.CLIENT_NOT_FOUND,
+                        "Client not found")
+
                 }
                 message.apiKey = ""
+                val messageToSend = WebsocketMessageServer(
+                    type = MessageStartTask.TYPE,
+                    sendFrom = message.sendFrom, data = message.data
+                ).toJson()
+                websocketConnectionServer.setWaitingForClient(
+                    clientName = message.sendTo,
+                    message = messageToSend)
                 websocketConnectionServer.sendMessage(
                     ws = connectedWs,
-                    message = WebsocketMessageServer(
-                        type = MessageStartTask.TYPE,
-                        sendFrom = message.sendFrom, data = message.data
-                    ).toJson()
-                )
+                    message = messageToSend)
+
                 println("Server: Task started")
-                websocketConnectionServer.sendMessage(
-                    ws = ws,
-                    message = MessageServerResponseCode.toJson(ServerAnswerStatus.OK, ""))
+                return MessageServerResponseCode.toJson(ServerAnswerStatus.OK, "")
             }
 
             MessageServerResponseCode.TYPE -> {
@@ -102,20 +92,17 @@ class WebsocketServerMessageHandler(val applicationData: ApplicationData) {
                     .getClientConnectedItem(message.sendTo)
                 if (connectedWs == null) {
                     println("Server: Client not found")
-                    websocketConnectionServer.sendMessage(
-                        ws = ws,
-                        message = MessageServerResponseCode.toJson(ServerAnswerStatus.CLIENT_NOT_FOUND, "Client not found")
-                    )
-                    return
+                    return MessageServerResponseCode.toJson(
+                        ServerAnswerStatus.CLIENT_NOT_FOUND,
+                        "Client not found")
+
                 }
-                websocketConnectionServer.sendMessage(
-                    ws = connectedWs,
-                    message = WebsocketMessageServer(
+                println("Server: Info received")
+                return WebsocketMessageServer(
                         type = MessageServerResponseCode.TYPE,
                         sendFrom = message.sendFrom, data = message.data
                     ).toJson()
-                )
-                println("Server: Info received")
+
             }
 
             MessageClientScriptList.TYPE -> {
@@ -123,24 +110,31 @@ class WebsocketServerMessageHandler(val applicationData: ApplicationData) {
                     .getClientRegisterItem(message.sendTo)
                 if (connectedWs == null) {
                     println("Server: Client not found")
-                    websocketConnectionServer.sendMessage(
-                        ws = ws,
-                        message = MessageServerResponseCode.toJson(ServerAnswerStatus.CLIENT_NOT_FOUND, "Client not found")
-                    )
-                    return
+                    return MessageServerResponseCode.toJson(
+                        ServerAnswerStatus.CLIENT_NOT_FOUND,
+                        "Client not found")
+
                 }
                 message.apiKey = ""
-                websocketConnectionServer.sendMessage(
-                    ws = connectedWs,
-                    message = WebsocketMessageServer(
+                return WebsocketMessageServer(
                         type = message.type,
                         sendFrom = message.sendFrom, data = message.data
                     ).toJson()
-                )
+
+            }
+            MessageClientUpdate.TYPE -> {
+                val messageClientUpdate = MessageClientUpdate.fromJson(message.data)
+                if (messageClientUpdate.updateOk) {
+                    websocketConnectionServer.setClientUpdateStatus(ws, 1)
+                } else {
+                    websocketConnectionServer.setClientUpdateStatus(ws, -1)
+                }
+                return null
             }
 
             else -> {
                 println("Server: Unknown message type received")
+                return null
             }
         }
     }

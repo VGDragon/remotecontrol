@@ -11,30 +11,35 @@ class GlobalVariables {
         var updateFolder = "updates"
         var updateDataName = "updates.json"
         var computerName: String = ""
-        val pingPongDelayTime: Long = 1000L
-        val messageHistorySize = 20
+        val pingPongDelayTime: Long = 4000L
+        val pingPongDelayTimeMax: Long = 20000L
+        val messageHistorySize = 100
+        val logName: String = "log.txt"
 
         //val execClientServiceName = "remotecontrol_exec_client.service"
         //val serverServiceName = "remotecontrol_server.service"
 
-        var applicationFolderName = File("").absolutePath
+        var applicationFolderName = File("").absoluteFile.relativeTo(File("").absoluteFile).path
         var jarName: String = "remotecontrol.jar"
-        var jarFolder: String = File(applicationFolderName).absoluteFile.parentFile.absolutePath
-        val jarMaxTransferSize = 1024L * 1024L
+        var jarFolder: String = File(applicationFolderName).absoluteFile.parentFile.relativeTo(File("").absoluteFile).path
+        val jarMaxTransferSize = 1024L * 50L
         fun applicationDataFile(): String {
-            return File(applicationFolderName, applicationDataFile).absolutePath
+            return File(applicationFolderName, applicationDataFile).path
         }
         fun scriptFolder(): String {
-            return File(applicationFolderName, scriptFolder).absolutePath
+            return File(applicationFolderName, scriptFolder).path
         }
         fun taskFolder(): String {
-            return File(applicationFolderName, taskFolder).absolutePath
+            return File(applicationFolderName, taskFolder).path
         }
         fun keyPairsFolder(): String {
-            return File(applicationFolderName, keyPairsFolder).absolutePath
+            return File(applicationFolderName, keyPairsFolder).path
         }
         fun jarPath(): String {
-            return File(jarFolder, jarName).absolutePath
+            return File(jarFolder, jarName).path
+        }
+        fun logPath(): String {
+            return File(applicationFolderName, logName).path
         }
         fun crateKeyPairsFolder(){
             val keyPairsFolder = File(keyPairsFolder())
@@ -43,7 +48,7 @@ class GlobalVariables {
             }
         }
         fun updateFolder(): String {
-            return File(jarFolder, updateFolder).absolutePath
+            return File(jarFolder, updateFolder).path
         }
         fun createUpdateFolder(){
             val updateFolder = File(updateFolder())
@@ -107,6 +112,25 @@ class GlobalVariables {
         fun closeApplication(){
             System.exit(0)
         }
-
+        fun waitForFileFinishedCreating(file: File): Boolean {
+            val maxEditDifference = 1000L
+            while (true){
+                if (!file.exists()){
+                    return false
+                }
+                if (System.currentTimeMillis() - file.lastModified() > maxEditDifference){
+                    return true
+                }
+                try {
+                    Thread.sleep(1000L)
+                } catch (e: InterruptedException){
+                    return false
+                }
+            }
+        }
+        fun writeToLog(message: String){
+            val logFile = File(logPath())
+            logFile.appendText("${Date()} - $message\n")
+        }
     }
 }

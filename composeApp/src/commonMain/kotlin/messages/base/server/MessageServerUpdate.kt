@@ -6,7 +6,8 @@ class MessageServerUpdate (val version: String,
                            val hash: String,
                            val size: Long,
                            val packageNr: Long,
-                           val packageAmount: Long) {
+                           val packageAmount: Long,
+                           val restart: Boolean = false) {
     var data: String = ""
 
     fun setData(data: ByteArray): MessageServerUpdate {

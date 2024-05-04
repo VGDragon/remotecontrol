@@ -1,7 +1,11 @@
 package filedata
 
 import GlobalVariables
+import GlobalVariables.Companion.waitForFileFinishedCreating
 import com.google.gson.Gson
+import connection.WebsocketConnectionClient
+import messages.WebsocketMessageClient
+import messages.base.client.MessageClientUpdate
 import messages.base.server.MessageServerUpdate
 import okio.ByteString.Companion.toByteString
 import java.io.File
@@ -12,7 +16,6 @@ class SoftwareUpdate (
     var version: String,
     val hashValue: String,
     var updateStatus: UpdateStatus = UpdateStatus.NOT_STARTED) {
-    // TODO: move message date in a separate class
     var partAmount: Long = -1L
     var currentpart: Long = 0L
 
@@ -34,26 +37,65 @@ class SoftwareUpdate (
         if (!updateFile.exists()){
             updateFile.writeBytes(readBuffer)
             currentpart++
-            if (partAmount % 10 == 0L){
+            if (currentpart % 10 == 0L){
                 println("Part: $currentpart of $partAmount")
             }
+            updateStatus = UpdateStatus.RUNNING
             return
         }
         updateFile.appendBytes(readBuffer)
         currentpart++
-        if (partAmount % 10 == 0L){
+        if (partAmount - currentpart < 10){
+            println("Part: $currentpart of $partAmount")
+        } else if (currentpart % 10 == 0L){
             println("Part: $currentpart of $partAmount")
         }
         if (partAmount != messageServerUpdate.packageNr){
+            updateStatus = UpdateStatus.RUNNING
             return
         }
+        val checkHashTime = System.currentTimeMillis()
         if(GlobalVariables.getHashValue(updateFile).equals(hashValue)){
             updateStatus = UpdateStatus.FINISHED
             saveToFile()
         } else {
             updateStatus = UpdateStatus.ERROR
         }
+        println("Check hash time: ${System.currentTimeMillis() - checkHashTime}")
         return
+    }
+    fun checkUpdateFile(ws: WebsocketConnectionClient, sendFrom: String) {
+        Thread{
+            val updateFile = File(File(GlobalVariables.updateFolder()), fileName())
+            if(GlobalVariables.getHashValue(updateFile).equals(hashValue)){
+                updateStatus = UpdateStatus.FINISHED
+                saveToFile()
+            } else {
+                updateStatus = UpdateStatus.ERROR
+            }
+            if (updateStatus != UpdateStatus.FINISHED){
+                println("Client: Update error")
+                ws.updatePackageNrs = 0L
+                ws.softwareUpdate = null
+            }
+            synchronized(ws.pingPongThreadLock){
+                ws.pingPongThread!!.interrupt()
+            }
+            ws.waitForServer("")
+            val messageToSend = WebsocketMessageClient(
+                type = MessageClientUpdate.TYPE,
+                apiKey = ws.applicationData.apiKey,
+                sendFrom = ws.computerName,
+                sendTo = sendFrom,
+                data = MessageClientUpdate(
+                    version = version,
+                    hash = hashValue,
+                    updateOk = updateStatus == UpdateStatus.FINISHED
+                ).toJson()
+            ).toJson()
+            ws.setWaitingForServer(messageToSend)
+            ws.sendMessage(messageToSend)
+        }.start()
     }
 
     fun startUpdate(): Boolean {
@@ -68,14 +110,15 @@ class SoftwareUpdate (
         }
 
         val hashValue = GlobalVariables.getHashValue(newVersionFile)
-        if (hashValue != hashValue){
+        if (hashValue != this.hashValue){
             return false
         }
         // copy new version to the application folder
-        var updateFile = File(GlobalVariables.jarPath(), GlobalVariables.jarName + ".update")
+        var updateFile = File(File(GlobalVariables.jarPath()).parentFile, GlobalVariables.jarName + ".update")
         if (updateFile.exists()){
             return false
         }
+        saveToFile()
         newVersionFile.copyTo(updateFile)
         GlobalVariables.closeApplication()
         return true
@@ -153,6 +196,7 @@ class SoftwareUpdate (
             return SoftwareUpdateData.fromFile()
         }
         fun fromJarFile(file: File): SoftwareUpdate? {
+            waitForFileFinishedCreating(file)
             if(file.extension != "jar"){
                 return null
             }

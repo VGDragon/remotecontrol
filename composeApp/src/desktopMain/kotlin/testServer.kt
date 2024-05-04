@@ -62,7 +62,10 @@ fun startServerWithGuiTest(){
 }
 
 fun testingServerScript(){
-    GlobalVariables.applicationFolderName = File("data", "server").absolutePath
+    GlobalVariables.applicationFolderName = File(File("data", "server"), "server")
+        .absoluteFile.relativeTo(File("").absoluteFile).path
+    GlobalVariables.jarFolder = File("data", "server").relativeTo(File(""))
+        .absoluteFile.relativeTo(File("").absoluteFile).path
     val applicationsData = ApplicationData.fromFile()
     if (applicationsData.computerName.isEmpty()){
         val name = InetAddress.getLocalHost().hostName
@@ -74,7 +77,6 @@ fun testingServerScript(){
     }
 
     var name = InetAddress.getLocalHost().hostName
-    GlobalVariables.applicationFolderName = File("data", "server").absolutePath
     GlobalVariables.computerName = name
     GlobalVariables.createFolders()
     // storing a class in a variable and create a class object from it

@@ -4,7 +4,10 @@ import java.io.File
 
 
 fun testingClientExecScript2(){
-    GlobalVariables.applicationFolderName = File("data", "client_exec_2").absolutePath
+    GlobalVariables.applicationFolderName = File(File("data", "client_exec_2"), "client")
+        .absoluteFile.relativeTo(File("").absoluteFile).path
+    GlobalVariables.jarFolder = File("data", "client_exec_2").relativeTo(File(""))
+        .absoluteFile.relativeTo(File("").absoluteFile).path
     GlobalVariables.computerName = System.getenv("COMPUTERNAME") + "_2"
     GlobalVariables.createFolders()
     // storing a class in a variable and create a class object from it

@@ -4,14 +4,17 @@ import java.io.File
 
 
 fun testingClientExecScript(){
-    GlobalVariables.applicationFolderName = File("data", "client_exec_1").absolutePath
+    GlobalVariables.applicationFolderName = File(File("data", "client_exec_1"), "client")
+        .absoluteFile.relativeTo(File("").absoluteFile).path
+    GlobalVariables.jarFolder = File("data", "client_exec_1").relativeTo(File(""))
+        .absoluteFile.relativeTo(File("").absoluteFile).path
     GlobalVariables.computerName = System.getenv("COMPUTERNAME") + "_1"
     GlobalVariables.createFolders()
-    GlobalVariables.jarFolder = File(GlobalVariables.applicationFolderName).absoluteFile.parentFile.absolutePath
+    GlobalVariables.jarFolder = File(GlobalVariables.applicationFolderName).absoluteFile.parentFile.canonicalPath
     // get path of the JAR file
     val applicationData = ApplicationData.fromFile()
     GlobalVariables.jarName = File(applicationData.jarFilePath).name
-    GlobalVariables.jarFolder = File(applicationData.jarFilePath).parentFile.absolutePath
+    GlobalVariables.jarFolder = File(applicationData.jarFilePath).parentFile.canonicalPath
     GlobalVariables.createUpdateFolder()
 
     val ws_client_exec = WebsocketConnectionClient(applicationData, true)
