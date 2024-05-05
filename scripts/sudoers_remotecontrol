@@ -1,0 +1,2 @@
+root ALL=(ALL) NOPASSWD: /apps/remotecontrol/scripts/wake_up_pc.sh
+dragonking3x ALL=(ALL) NOPASSWD: /apps/remotecontrol/scripts/wake_up_pc.sh

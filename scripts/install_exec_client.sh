@@ -14,6 +14,20 @@ fi
 
 # Create the target directory
 mkdir -p "${TARGET_EXECUTE_CLIENT_DIR}"
+mkdir -p "${TARGET_EXECUTE_CLIENT_DIR}/scripts"
+mkdir -p "${TARGET_DIR}/scripts"
+
+# Copy the scripts
+for file in "${SCRIPT_DIR}/prepared_exec_scripts"/*
+do
+  cp "${file}" "${TARGET_EXECUTE_CLIENT_DIR}/scripts/$(basename ${file})"
+  chmod 777 "${TARGET_EXECUTE_CLIENT_DIR}/scripts/$(basename ${file})"
+done
+for file in "${SCRIPT_DIR}/sudoers_scripts"/*
+do
+  cp "${file}" "${TARGET_DIR}/scripts/$(basename ${file})"
+  chmod 777 "${TARGET_DIR}/scripts/$(basename ${file})"
+done
 
 # Copy the files
 cp "${SCRIPT_DIR}/remotecontrol.jar" "${TARGET_DIR}/remotecontrol.jar"
