@@ -30,7 +30,7 @@ class WebsocketServerMessageHandler(val applicationData: ApplicationData) {
                 return null
             }
             "ping" -> {
-                println("Server: Ping received")
+                //println("Server: Ping received")
                 return WebsocketMessageServer(
                         type = "pong",
                         sendFrom = "",

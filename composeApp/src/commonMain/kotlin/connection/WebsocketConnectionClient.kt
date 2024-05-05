@@ -99,7 +99,7 @@ class WebsocketConnectionClient : WebSocketClient {
             WebsocketMessageClient(
                 type = MessageClientRegister.TYPE,
                 apiKey = applicationData.apiKey,
-                sendFrom = "",
+                sendFrom = computerName,
                 sendTo = "",
                 data = MessageClientRegister(
                     clientName = computerName,
@@ -297,6 +297,7 @@ class WebsocketConnectionClient : WebSocketClient {
 
     override fun onClose(p0: Int, p1: String?, p2: Boolean) {
         println("Client: Closed connection")
+        pingPongThread!!.interrupt()
     }
 
     override fun onError(p0: Exception?) {

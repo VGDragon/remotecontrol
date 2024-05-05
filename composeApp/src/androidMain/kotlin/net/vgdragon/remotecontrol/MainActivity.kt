@@ -11,27 +11,32 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.app.ActivityCompat
 import filedata.ApplicationData
+import java.io.File
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
-            var fileDir= getFilesDir().absolutePath
-            if (!fileDir.endsWith("/")){
+            var fileDir = getFilesDir().absolutePath
+            if (!fileDir.endsWith("/")) {
                 fileDir += "/"
             }
+
             GlobalVariables.applicationFolderName = fileDir
             GlobalVariables.createFolders()
             if (ActivityCompat.checkSelfPermission(
                     this,
                     Manifest.permission.BLUETOOTH_CONNECT
                 ) == PackageManager.PERMISSION_GRANTED
-            ){
+            ) {
                 println("ok")
             }
             val applicationsData = ApplicationData.fromFile()
-            if (applicationsData.computerName.isEmpty()){
+            if (applicationsData.jarFilePath.isEmpty()) {
+                println()
+            }
+            if (applicationsData.computerName.isEmpty()) {
                 val name = (getSystemService(BluetoothManager::class.java) as BluetoothManager).adapter.name
                 applicationsData.computerName = name
                 applicationsData.saveToFile()

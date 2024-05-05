@@ -11,10 +11,11 @@ import java.net.InetAddress
 
 
 fun main(args: Array<String>) {
+    var arguments = args
+    //arguments = arrayOf("prepare")
 
-
-    if (args.isNotEmpty()) {
-        val startType = args[0]
+    if (arguments.isNotEmpty()) {
+        val startType = arguments[0]
         if (startType.equals("--help", ignoreCase = true)){
             println("prepare")
             println("key [client_name]")
@@ -25,7 +26,7 @@ fun main(args: Array<String>) {
             ApplicationData.fromFile()
             return
         } else if (startType.equals("key", ignoreCase = true)){
-            if (args.size < 2){
+            if (arguments.size < 2){
                 println("key [client_name]")
                 return
             }
@@ -35,7 +36,7 @@ fun main(args: Array<String>) {
             applicationData.isClient = true
             applicationData.exec = true
             applicationData.isServer = false
-            applicationData.computerName = args[1]
+            applicationData.computerName = arguments[1]
             GlobalVariables.computerName = applicationData.computerName
             val websocketConnectionClient = WebsocketConnectionClient(applicationData, true)
             if(GlobalVariables.preparedKeyPairExists(websocketConnectionClient.computerName)){

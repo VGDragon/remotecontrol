@@ -28,7 +28,7 @@ class WebsocketClientMessageHandler(val applicationData: ApplicationData){
                 return null
             }
             "pong" -> {
-                println("Client: Pong received")
+                //println("Client: Pong received")
                 return null
             }
 

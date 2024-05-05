@@ -68,18 +68,6 @@ class WebsocketConnectionServer : WebSocketServer {
         println("Server: Client connected")
     }
 
-    override fun onClose(p0: WebSocket?, p1: Int, p2: String?, p3: Boolean) {
-        println("Server: Client disconnected")
-        if (p0 == null) {
-            return
-        }
-        synchronized(websocketClientsLock) {
-            websocketClients.remove(p0)
-        }
-        removeClientRegisterItem(p0)
-        removeClientConnectedItem(p0)
-    }
-
     override fun onMessage(p0: WebSocket?, p1: String?) {
         if (p1 == null || p0 == null) {
             return
@@ -143,9 +131,30 @@ class WebsocketConnectionServer : WebSocketServer {
         if (p0 == null) {
             return
         }
-        removeClientRegisterItem(p0)
-        removeClientConnectedItem(p0)
+        handleClientDisconnect(p0)
         p0.close()
+    }
+
+    override fun onClose(p0: WebSocket?, p1: Int, p2: String?, p3: Boolean) {
+        println("Server: Client disconnected")
+        if (p0 == null) {
+            return
+        }
+        handleClientDisconnect(p0)
+    }
+    fun handleClientDisconnect(ws: WebSocket){
+        synchronized(websocketClientsLock) {
+            websocketClients.remove(ws)
+        }
+        val clientName = getClientConnectedNameFromWs(ws)
+        removeClientRegisterItem(ws)
+        removeClientConnectedItem(ws)
+        if (clientName == null) {
+            return
+        }
+        removeWaitingForClient(clientName)
+        removeServerMessageId(clientName)
+        removeClientMessageId(clientName)
     }
 
     override fun onStart() {
@@ -577,6 +586,11 @@ class WebsocketConnectionServer : WebSocketServer {
             serverMessageIdCounter[clientName] = 0
         }
     }
+    fun removeServerMessageId(clientName: String) {
+        synchronized(serverMessageIdCounterLock) {
+            serverMessageIdCounter.remove(clientName)
+        }
+    }
 
     // client message ID
     fun getNextClientMessageId(clientName: String): Long {
@@ -610,6 +624,11 @@ class WebsocketConnectionServer : WebSocketServer {
     fun resetClientMessageId(clientName: String) {
         synchronized(clientMessageIdLock) {
             clientMessageId[clientName] = 0
+        }
+    }
+    fun removeClientMessageId(clientName: String) {
+        synchronized(clientMessageIdLock) {
+            clientMessageId.remove(clientName)
         }
     }
 

@@ -27,6 +27,9 @@ class ApplicationData{
     }
 
     fun saveToFile(): ApplicationData {
+        if (computerName.isEmpty()){
+            computerName = GlobalVariables.computerName
+        }
         // save the api key to a file
         val file = File(GlobalVariables.applicationDataFile())
         file.writeText(this.toJson())

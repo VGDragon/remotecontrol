@@ -677,69 +677,43 @@ fun App() {
                             onClick = {
 
                                 Thread {
-                                    var websocketConnectionClientTemp = connectToServer(applicationData)
-                                    if (websocketConnectionClientTemp == null) {
+                                    try {
+                                        var websocketConnectionClientTemp = WebsocketConnectionClient(
+                                            applicationData = applicationData,
+                                            executeTask = false)
+                                        websocketConnectionClientTemp.connectAndRegister(doJoin = false)
+                                        websocketConnectionClientTemp.sendMessage(
+                                            WebsocketMessageClient(
+                                                type = MessageClientClientList.TYPE,
+                                                apiKey = applicationData.apiKey,
+                                                sendFrom = "",
+                                                sendTo = "",
+                                                data = ""
+                                            )
+                                                .toJson()
+                                        )
+                                        websocketConnectionClientTemp.waitForResponse()
+                                        applicationData.saveToFile()
+                                        websocketConnectionClient = websocketConnectionClientTemp
+                                        connectButtonActive.value = false
+                                        disconnectButtonActive.value = true
+                                    } catch (e: Exception) {
+
                                         println("Error: Connection failed")
                                         errorText = "Connection failed"
                                         connectButtonActive.value = false
                                         disconnectButtonActive.value = true
                                         applicationData.saveToFile()
-                                    } else {
-                                        try {
-                                            websocketConnectionClientTemp.setConnectionKeyPair()
-                                            websocketConnectionClientTemp.sendMessage(
-                                                WebsocketMessageClient(
-                                                    type = MessageClientRegister.TYPE,
-                                                    apiKey = applicationData.apiKey,
-                                                    sendFrom = "",
-                                                    sendTo = "",
-                                                    data = MessageClientRegister(
-                                                        clientName = websocketConnectionClientTemp.computerName,
-                                                        isExecutable = false
-                                                    ).toJson()
-                                                )
-                                                    .toJson()
-                                            )
-                                            websocketConnectionClientTemp.waitForResponse()
-                                            websocketConnectionClientTemp.pingPong()
-                                            websocketConnectionClientTemp.sendMessage(
-                                                WebsocketMessageClient(
-                                                    type = MessageClientClientList.TYPE,
-                                                    apiKey = applicationData.apiKey,
-                                                    sendFrom = "",
-                                                    sendTo = "",
-                                                    data = ""
-                                                )
-                                                    .toJson()
-                                            )
-                                            websocketConnectionClientTemp.waitForResponse()
-                                            applicationData.saveToFile()
-                                            websocketConnectionClient = websocketConnectionClientTemp
-                                            connectButtonActive.value = false
-                                            disconnectButtonActive.value = true
-                                        } catch (e: Exception) {
-                                            errorText = "Error: Connection failed"
-                                            println("Error: ${e.message}")
-                                            connectButtonActive.value = true
-                                            disconnectButtonActive.value = false
-                                        }
-
+                                        e.printStackTrace()
                                     }
+
+
                                 }.start()
                             }) {
                             Text("Connect")
                         }
                         Button(enabled = disconnectButtonActive.value,
                             onClick = {
-                                websocketConnectionClient!!.sendMessage(
-                                    WebsocketMessageClient(
-                                        type = MessageClientRemoveClientBridge.TYPE,
-                                        apiKey = applicationData.apiKey,
-                                        sendFrom = "",
-                                        sendTo = "",
-                                        data = ""
-                                    ).toJson()
-                                )
                                 websocketConnectionClient!!.setIsConnected(false)
                                 websocketConnectionClient!!.close()
                                 websocketConnectionClient = null

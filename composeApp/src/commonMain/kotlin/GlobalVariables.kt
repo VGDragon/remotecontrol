@@ -19,26 +19,45 @@ class GlobalVariables {
         //val execClientServiceName = "remotecontrol_exec_client.service"
         //val serverServiceName = "remotecontrol_server.service"
 
-        var applicationFolderName = File("").absoluteFile.relativeTo(File("").absoluteFile).path
+        var applicationFolderName = File("").absoluteFile.relativeTo(File(".").absoluteFile).path
         var jarName: String = "remotecontrol.jar"
-        var jarFolder: String = File(applicationFolderName).absoluteFile.parentFile.relativeTo(File("").absoluteFile).path
+        var jarFolder: String = if(File(applicationFolderName).absoluteFile.path.equals("/")){
+            ""
+        } else {
+            File(applicationFolderName).absoluteFile.parentFile.relativeTo(File("").absoluteFile).path
+        }
         val jarMaxTransferSize = 1024L * 50L
         fun applicationDataFile(): String {
+            if (applicationFolderName.isEmpty()){
+                return File(applicationDataFile).path
+            }
             return File(applicationFolderName, applicationDataFile).path
         }
         fun scriptFolder(): String {
+            if (applicationFolderName.isEmpty()){
+                return File(scriptFolder).path
+            }
             return File(applicationFolderName, scriptFolder).path
         }
         fun taskFolder(): String {
+            if (applicationFolderName.isEmpty()){
+                return File(taskFolder).path
+            }
             return File(applicationFolderName, taskFolder).path
         }
         fun keyPairsFolder(): String {
+            if (applicationFolderName.isEmpty()){
+                return File(keyPairsFolder).path
+            }
             return File(applicationFolderName, keyPairsFolder).path
         }
         fun jarPath(): String {
             return File(jarFolder, jarName).path
         }
         fun logPath(): String {
+            if (applicationFolderName.isEmpty()){
+                return File(logName).path
+            }
             return File(applicationFolderName, logName).path
         }
         fun crateKeyPairsFolder(){
