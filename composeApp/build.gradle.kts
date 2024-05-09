@@ -47,31 +47,23 @@ kotlin {
             @OptIn(ExperimentalComposeLibrary::class)
             implementation(compose.components.resources)
 
-            // Note, if you develop a library, you should use compose.desktop.common.
-            // compose.desktop.currentOs should be used in launcher-sourceSet
-            // (in a separate module for demo project and in testMain).
-            // With compose.desktop.common you will also lose @Preview functionality
-            // implementation(compose.desktop.currentOs)
+
             // add javax.websocket
-            //implementation("com.squareup.okhttp3:okhttp:4.9.0")
             implementation("com.neovisionaries:nv-websocket-client:2.3")
             implementation("org.java-websocket:Java-WebSocket:1.5.4")
 
             // Ktor dependencies websocket
             implementation("io.ktor:ktor-websockets:2.3.8")
-            //implementation("io.ktor:ktor-client-okhttp:2.3.8")
             implementation("com.squareup.okhttp3:okhttp:4.12.0")
             // Ktor dependencies
             //implementation("io.ktor:ktor-server-core:2.3.8")
             //implementation("io.ktor:ktor-serialization:2.3.8")
+            implementation("io.ktor:ktor-server-core-jvm")
+            implementation("io.ktor:ktor-server-websockets-jvm")
+            implementation("io.ktor:ktor-server-netty-jvm")
 
             // add json parser gson
             implementation("com.google.code.gson:gson:2.8.7") // TODO change to kotson or moshi
-            // https://mvnrepository.com/artifact/com.github.salomonbrys.kotson/kotson
-            //runtimeOnly("com.github.salomonbrys.kotson:kotson:2.5.0")
-            //implementation("com.squareup.moshi:moshi:1.14.0")
-            //implementation("me.sujanpoudel.mputils:platform-identifier:0.1.1")
-            //implementation("me.sujanpoudel.mputils:context-provider:0.1.1")
             implementation("me.sujanpoudel.mputils:paths:0.1.1")
         }
         desktopMain.dependencies {
@@ -95,7 +87,7 @@ android {
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.1"
     }
     packaging {
         resources {
@@ -114,10 +106,10 @@ android {
     dependencies {
         debugImplementation(libs.compose.ui.tooling)
     }
-    packagingOptions {
-        //exclude("META-INF/INDEX.LIST")
-        //exclude("META-INF/io.netty.versions.properties")
-    }
+    //packagingOptions {
+    //    //exclude("META-INF/INDEX.LIST")
+    //    //exclude("META-INF/io.netty.versions.properties")
+    //}
 
 }
 dependencies {
@@ -131,7 +123,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "net.vgdragon.remotecontrol"
-            packageVersion = "1.0.0"
+            packageVersion = "1.0.1"
         }
     }
 }

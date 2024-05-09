@@ -71,33 +71,26 @@ fun main(args: Array<String>) {
         val restServer = RestServer().build(applicationData.port + 1)
         restServer.start(wait = false)
         websocketConnectionServer.start()
-        while (true) {
-            try {
+        try {
+            while (true) {
                 Thread.sleep(1000)
-            } catch (e: InterruptedException) {
-                return
             }
-
+        } catch (e: InterruptedException) {
+            restServer.stop()
+        } finally {
+            restServer.stop()
         }
+        websocketConnectionServer.stop()
     } else if(applicationData.exec && applicationData.isClient){
         val scriptFolderFile = File(GlobalVariables.scriptFolder())
         if (!scriptFolderFile.exists()){
             scriptFolderFile.mkdirs()
         }
-        while (true){
-            try {
-                val websocketConnectionClient = WebsocketConnectionClient(applicationData, true)
-                websocketConnectionClient.connectAndRegister()
-                if (websocketConnectionClient.isClosed ){
-                    if (websocketConnectionClient.isConnectionError){
-                        return
-                    }
-                    Thread.sleep(1000)
-                    continue
-                }
-            } catch (e: InterruptedException) {
-                return
-            }
+        try {
+            val websocketConnectionClient = WebsocketConnectionClient(applicationData, true)
+            websocketConnectionClient.connectAndRegister(doJoin = true)
+        } catch (e: InterruptedException) {
+            return
         }
     } else if(applicationData.isClient) {
         application {

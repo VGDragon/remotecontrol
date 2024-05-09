@@ -13,7 +13,7 @@ import rest.message.RestMessageKeyExchange
 
 class RestServer {
     var server: NettyApplicationEngine? = null
-    fun build(port: Int): NettyApplicationEngine {
+    fun build(port: Int): RestServer {
         val server = embeddedServer(Netty, port = port) {
             routing {
                 post("/key-exchange") {
@@ -24,7 +24,13 @@ class RestServer {
             }
         }
         this.server = server
-        return server
+        return this
+    }
+    fun start(wait: Boolean = false){
+        if (server == null){
+            return
+        }
+        server!!.start(wait = true)
     }
     fun stop(){
         if (server == null){

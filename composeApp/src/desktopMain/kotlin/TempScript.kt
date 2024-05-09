@@ -47,7 +47,7 @@ class TempScript {
         restServer.start(wait = false)
         Thread.sleep(1000)
         sendPost()
-        restServer.stop(0, 0)
+        restServer.stop()
 
         while (true) {
             println("Server is running")

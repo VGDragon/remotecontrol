@@ -8,10 +8,7 @@ import messages.WebsocketMessageClient
 import messages.WebsocketMessageServer
 import messages.base.MessageBase
 import messages.base.MessageReceived
-import messages.base.client.MessageClientRequestMessage
-import messages.base.server.MessageServerRequestMessage
 import messages.base.server.MessageServerUpdate
-import okhttp3.internal.wait
 import org.java_websocket.WebSocket
 import org.java_websocket.handshake.ClientHandshake
 import org.java_websocket.server.WebSocketServer
@@ -32,7 +29,7 @@ class WebsocketConnectionServer : WebSocketServer {
     val clientConnectedNamesLock = Object()
     val keyMap: MutableMap<String, ConnectionKeyPair> = mutableMapOf()
     val keyMapLock = Object()
-    val lastClientMessageTime: MutableMap<String, Long> = mutableMapOf()
+    val lastClientMessageTime: MutableMap<WebSocket, Long> = mutableMapOf()
     val lastClientMessageTimeLock = Object()
     var pingPongThread: Thread? = null
     val pingPongThreadLock = Object()
@@ -57,6 +54,7 @@ class WebsocketConnectionServer : WebSocketServer {
         this.applicationData = applicationData
         this.websocketClients = mutableListOf()
         this.websocketClientMessageHandler = WebsocketServerMessageHandler(applicationData)
+        println("Server: Port ${applicationData.port} started")
     }
 
     override fun onOpen(p0: WebSocket?, p1: ClientHandshake?) {
@@ -73,6 +71,9 @@ class WebsocketConnectionServer : WebSocketServer {
             return
         }
 
+        // update last client message time
+        updateLastClientMessageTime(p0)
+
         synchronized(BadClientHandler.badClientMapLock) {
             if (BadClientHandler.badClientMap.contains(p0)) {
                 println("bad client")
@@ -86,9 +87,6 @@ class WebsocketConnectionServer : WebSocketServer {
             p0.send(MessageBase("", GlobalVariables.computerName, 0L).toJson())
             return
         }
-
-        // update last client message time
-        updateLastClientMessageTime(messageBase.name)
         // decrypt message
         val message = decryptMessage(messageBase) ?: return BadClientHandler.handleBadClient(p0)
 
@@ -162,6 +160,20 @@ class WebsocketConnectionServer : WebSocketServer {
         updateJarThread()
     }
 
+    override fun stop(){
+        super.stop()
+        synchronized(keepWsRunningLock) {
+            keepWsRunning = false
+        }
+        synchronized(pingPongThreadLock) {
+            pingPongThread?.interrupt()
+            pingPongThread = null
+        }
+        synchronized(updateJarThreadLock) {
+            updateJarThread?.interrupt()
+            updateJarThread = null
+        }
+    }
 
     fun sendMessageHistory(ws: WebSocket, messageId: Long) {
         val clientName = synchronized(clientConnectedNamesLock) {
@@ -390,7 +402,7 @@ class WebsocketConnectionServer : WebSocketServer {
                             break
                         }
                         val currentTime = System.currentTimeMillis()
-                        val clientsToRemove = mutableListOf<String>()
+                        val clientsToRemove = mutableListOf<WebSocket>()
                         synchronized(lastClientMessageTimeLock) {
                             lastClientMessageTime.forEach {
                                 if (currentTime - it.value > pingPongDelayTime * 4) {
@@ -405,22 +417,27 @@ class WebsocketConnectionServer : WebSocketServer {
                                     lastClientMessageTime.remove(it)
                                 }
                             }
-                            synchronized(clientConnectedNamesLock) {
-                                if (clientConnectedNames[it] != null) {
-                                    clientConnectedNames[it]!!.close()
-                                    clientConnectedNames.remove(it)
-                                }
-                            }
-                            synchronized(clientTaskRunningPermissionLock) {
-                                if (clientTaskRunningPermission[it] != null) {
-                                    clientTaskRunningPermission.remove(it)
-                                }
-                            }
                             synchronized(lastClientMessageTimeLock) {
                                 if (lastClientMessageTime[it] != null) {
                                     lastClientMessageTime.remove(it)
                                 }
                             }
+                            val clientName: String? = synchronized(clientConnectedNamesLock){
+                                clientConnectedNames.keys.firstOrNull { key -> clientConnectedNames[key] == it }
+                            }
+                            if (clientName != null) {
+                                synchronized(clientConnectedNamesLock) {
+                                    if (clientConnectedNames[clientName] != null) {
+                                        clientConnectedNames.remove(clientName)
+                                    }
+                                }
+                                synchronized(clientTaskRunningPermissionLock) {
+                                    if (clientTaskRunningPermission[clientName] != null) {
+                                        clientTaskRunningPermission.remove(clientName)
+                                    }
+                                }
+                            }
+                            it.close()
                         }
                     }
                 }
@@ -430,19 +447,19 @@ class WebsocketConnectionServer : WebSocketServer {
     }
 
     // getters and setters
-    fun updateLastClientMessageTime(clientName: String) {
+    fun updateLastClientMessageTime(clientName: WebSocket) {
         synchronized(lastClientMessageTimeLock) {
             lastClientMessageTime[clientName] = System.currentTimeMillis()
         }
     }
 
-    fun getLastClientMessageTime(clientName: String): Long {
+    fun getLastClientMessageTime(clientName: WebSocket): Long {
         synchronized(lastClientMessageTimeLock) {
             return lastClientMessageTime[clientName] ?: 0
         }
     }
 
-    fun deleteLastClientMessageTime(clientName: String) {
+    fun deleteLastClientMessageTime(clientName: WebSocket) {
         synchronized(lastClientMessageTimeLock) {
             lastClientMessageTime.remove(clientName)
         }

@@ -33,9 +33,6 @@ class MainActivity : ComponentActivity() {
                 println("ok")
             }
             val applicationsData = ApplicationData.fromFile()
-            if (applicationsData.jarFilePath.isEmpty()) {
-                println()
-            }
             if (applicationsData.computerName.isEmpty()) {
                 val name = (getSystemService(BluetoothManager::class.java) as BluetoothManager).adapter.name
                 applicationsData.computerName = name

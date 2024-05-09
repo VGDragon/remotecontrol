@@ -635,7 +635,7 @@ fun App() {
                         // add link and port entries
                         Row(modifier = Modifier.height(50.dp)) {
 
-                            Column(modifier = Modifier.height(50.dp)) {
+                            Column(modifier = Modifier.height(60.dp)) {
                                 Text("Address:", fontSize = 20.sp)
                             }
 
@@ -833,7 +833,6 @@ fun App() {
             applicationData.saveToFile()
         }
     }
-
 }
 
 @Composable

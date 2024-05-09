@@ -12,19 +12,17 @@ import messages.base.MessageReceived
 import messages.base.MessageServerResponseCode
 import messages.base.ServerAnswerStatus
 import messages.base.client.MessageClientRegister
-import messages.base.client.MessageClientRequestMessage
-import messages.base.server.MessageServerRequestMessage
 import messages.base.server.MessageServerUpdate
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
-import okhttp3.internal.wait
 import org.java_websocket.client.WebSocketClient
 import org.java_websocket.handshake.ServerHandshake
 import rest.message.RestMessageKeyExchange
 import java.net.URI
 
+import java.io.File
 
 class WebsocketConnectionClient : WebSocketClient {
     val applicationData: ApplicationData
@@ -88,6 +86,7 @@ class WebsocketConnectionClient : WebSocketClient {
     }
 
     fun connectAndRegister(doJoin: Boolean = true) {
+        println("Client: Connect to uri: ${uri}")
         this.connect()
         waitForConnection()
         if (getIsConnectionError()) {
@@ -237,6 +236,7 @@ class WebsocketConnectionClient : WebSocketClient {
                         messageId = clientMessageId
                     ).toJson()
                 )
+                val temp = 0
             }
         }
     }
