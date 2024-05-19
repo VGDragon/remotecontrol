@@ -4,6 +4,7 @@ import GlobalVariables
 import badclient.BadClientHandler
 import filedata.ApplicationData
 import filedata.SoftwareUpdate
+import filedata.UpdateStatus
 import messages.WebsocketMessageClient
 import messages.WebsocketMessageServer
 import messages.base.MessageBase
@@ -14,55 +15,111 @@ import org.java_websocket.handshake.ClientHandshake
 import org.java_websocket.server.WebSocketServer
 import java.lang.Exception
 import java.net.InetSocketAddress
+import java.util.*
 
 
 class WebsocketConnectionServer : WebSocketServer {
     val applicationData: ApplicationData
-    var websocketClients: MutableList<WebSocket>
-    var websocketClientsLock = Object()
-    var websocketClientMessageHandler: WebsocketServerMessageHandler
+    var websocketServerMessageHandler: WebsocketServerMessageHandler
     var keepWsRunning: Boolean = true
-    var keepWsRunningLock = Object()
-    val clientTaskRunningPermission: MutableMap<String, WebSocket> = mutableMapOf()
-    val clientTaskRunningPermissionLock = Object()
-    val clientConnectedNames: MutableMap<String, WebSocket> = mutableMapOf()
-    val clientConnectedNamesLock = Object()
-    val keyMap: MutableMap<String, ConnectionKeyPair> = mutableMapOf()
-    val keyMapLock = Object()
-    val lastClientMessageTime: MutableMap<WebSocket, Long> = mutableMapOf()
-    val lastClientMessageTimeLock = Object()
-    var pingPongThread: Thread? = null
-    val pingPongThreadLock = Object()
-    val pingPongDelayTime = GlobalVariables.pingPongDelayTime
-    var updateJarThread: Thread? = null
-    val updateJarThreadLock = Object()
 
-    val lastServerMessagesWithId: MutableMap<String, MutableMap<Long, String>> = mutableMapOf()
-    val lastServerMessagesWithIdLock = Object()
+    var websocketClients: MutableMap<WebSocket, String?> = mutableMapOf()
+    val clientTaskRunningPermission: MutableMap<String, WebSocket> = mutableMapOf()
+
+    val keyMap: MutableMap<String, ConnectionKeyPair> = mutableMapOf()
+    val lastClientMessageTime: MutableMap<WebSocket, Long> = mutableMapOf()
+    val pingPongDelayTime = GlobalVariables.pingPongDelayTime
+
     val serverMessageIdCounter: MutableMap<String, Long> = mutableMapOf()
-    val serverMessageIdCounterLock = Object()
 
     val clientMessageId: MutableMap<String, Long> = mutableMapOf()
-    val clientMessageIdLock = Object()
-    val clientUpdateDoneNames: MutableMap<String, Int> = mutableMapOf()
-    val clientUpdateDoneNamesLock = Object()
 
+    //// software update
+    val clientUpdateDoneNames: MutableMap<String, Int> = mutableMapOf()
     val waitingForClientList: MutableMap<String, String?> = mutableMapOf()
-    val waitingForClientListLock = Object()
+    var softwareUpdate: SoftwareUpdate? = null
+    var clientsToUpdate: List<String>? = null
+    var updateUploadFinishedTime = 0L
+    var restartMessageSendTime = 0L
+
+    ///////// messages
+    val messageReceivedQueue = LinkedList<Pair<WebSocket, String>>()
+    val messageSendQueue = LinkedList<Pair<WebSocket, String>>()
+    var handleMessageThread: Thread
+    var sendMessageThread: Thread = Thread {
+        while (true) {
+            if (messageSendQueue.size == 0) {
+                Thread.sleep(100)
+                continue
+            }
+            val messagePair = messageSendQueue.remove()
+            messagePair.first.send(messagePair.second)
+        }
+    }
 
     constructor(applicationData: ApplicationData) : super(InetSocketAddress(applicationData.port)) {
         this.applicationData = applicationData
-        this.websocketClients = mutableListOf()
-        this.websocketClientMessageHandler = WebsocketServerMessageHandler(applicationData)
+        this.websocketServerMessageHandler = WebsocketServerMessageHandler(applicationData)
         println("Server: Port ${applicationData.port} started")
+
+        this.handleMessageThread = Thread {
+            while (true) {
+                if (messageReceivedQueue.size > 0) {
+                    val messagePair = messageReceivedQueue.remove()
+                    val ws = messagePair.first
+                    val message = messagePair.second
+                    lastClientMessageTime[ws] = System.currentTimeMillis()
+                    handleMessage(ws, message)
+                } else {
+                    handleSoftwareUpdate()
+                }
+                val currentTime = System.currentTimeMillis()
+                val clientsToRemove = mutableListOf<WebSocket>()
+                lastClientMessageTime.forEach {
+                    if (currentTime - it.value > pingPongDelayTime * 4) {
+                        clientsToRemove.add(it.key)
+                        println("Server: ${it.key} - Ping Pong timeout")
+                    }
+                }
+
+                clientsToRemove.forEach {
+                    if (lastClientMessageTime[it] != null) {
+                        lastClientMessageTime.remove(it)
+                    }
+                    val clientName = websocketClients.remove(it)
+                    if (clientName != null) {
+                        if (clientTaskRunningPermission[clientName] != null) {
+                            clientTaskRunningPermission.remove(clientName)
+                        }
+                    }
+                    it.close()
+                }
+
+                try {
+                    Thread.sleep(100)
+                } catch (e: InterruptedException) {
+                    break
+                }
+            }
+        }
+    }
+
+    fun startThreads() {
+        handleMessageThread.start()
+        sendMessageThread.start()
+    }
+
+    fun stopThreads() {
+        handleMessageThread.interrupt()
+        sendMessageThread.interrupt()
     }
 
     override fun onOpen(p0: WebSocket?, p1: ClientHandshake?) {
-        if (p0 != null) {
-            synchronized(websocketClientsLock) {
-                websocketClients.add(p0)
-            }
+        if (p0 == null) {
+            return
         }
+        websocketClients[p0] = null
+        lastClientMessageTime[p0] = System.currentTimeMillis()
         println("Server: Client connected")
     }
 
@@ -70,53 +127,8 @@ class WebsocketConnectionServer : WebSocketServer {
         if (p1 == null || p0 == null) {
             return
         }
-
-        // update last client message time
-        updateLastClientMessageTime(p0)
-
-        synchronized(BadClientHandler.badClientMapLock) {
-            if (BadClientHandler.badClientMap.contains(p0)) {
-                println("bad client")
-                BadClientHandler.handleBadClient(p0)
-                return
-            }
-        }
-        // send server name if client name is empty
-        val messageBase = MessageBase.fromJson(p1)
-        if (messageBase.name.isEmpty()) {
-            p0.send(MessageBase("", GlobalVariables.computerName, 0L).toJson())
-            return
-        }
-        // decrypt message
-        val message = decryptMessage(messageBase) ?: return BadClientHandler.handleBadClient(p0)
-
-        val messageClass = WebsocketMessageClient.fromJson(message)
-        if (messageClass.type == MessageReceived.TYPE) {
-            setWaitingForClient(clientName = messageBase.name, message = null)
-            return
-        }
-        sendMessage(
-            ws = p0,
-            message = WebsocketMessageClient(
-                type = MessageReceived.TYPE,
-                apiKey = applicationData.apiKey,
-                sendFrom = GlobalVariables.computerName,
-                sendTo = "",
-                data = messageBase.messageId.toString()
-            ).toJson(),
-            increate_message_id = false
-        )
-        waitForClient(messageBase.name, "")
-        val nextClientMessageId = getNextClientMessageId(messageBase.name)
-        if (nextClientMessageId != messageBase.messageId) {
-            return
-        }
-        incrementClientMessageId(messageBase.name)
-        val messageToSend = websocketClientMessageHandler.handle(this, p0, messageClass)
-        setWaitingForClient(messageBase.name, messageToSend)
-        if (messageToSend != null) {
-            sendMessage(p0, messageToSend)
-        }
+        lastClientMessageTime[p0] = System.currentTimeMillis()
+        messageReceivedQueue.add(Pair(p0, p1))
 
     }
 
@@ -140,565 +152,240 @@ class WebsocketConnectionServer : WebSocketServer {
         }
         handleClientDisconnect(p0)
     }
-    fun handleClientDisconnect(ws: WebSocket){
-        synchronized(websocketClientsLock) {
-            websocketClients.remove(ws)
-        }
-        val clientName = getClientConnectedNameFromWs(ws)
-        removeClientRegisterItem(ws)
-        removeClientConnectedItem(ws)
-        if (clientName == null) {
+
+
+    fun handleMessage(ws: WebSocket, message: String) {
+
+        if (BadClientHandler.badClientMap.contains(ws)) {
+            println("bad client")
+            BadClientHandler.handleBadClient(ws)
             return
         }
-        removeWaitingForClient(clientName)
-        removeServerMessageId(clientName)
-        removeClientMessageId(clientName)
+        // send server name if client name is empty
+        val messageBase = MessageBase.fromJson(message)
+        if (messageBase.name.isEmpty()) {
+            ws.send(MessageBase("", GlobalVariables.computerName, 0L).toJson())
+            return
+        }
+        // decrypt message
+        val receivedMessage = decryptMessage(
+            clientName = messageBase.name,
+            message = messageBase.msg
+        ) ?: return BadClientHandler.handleBadClient(ws)
+        if (!clientMessageId.containsKey(messageBase.name)){
+            clientMessageId[messageBase.name] = 0
+        }
+        val nextClientMessageId = clientMessageId[messageBase.name]!! + 1
+        if (nextClientMessageId != messageBase.messageId) {
+            return
+        }
+
+        val messageClass = WebsocketMessageClient.fromJson(receivedMessage)
+        if (messageClass.type == MessageReceived.TYPE) {
+            waitingForClientList[messageBase.name] = null
+            return
+        }
+        sendMessage(
+            ws = ws,
+            message = WebsocketMessageClient(
+                type = MessageReceived.TYPE,
+                apiKey = applicationData.apiKey,
+                sendFrom = GlobalVariables.computerName,
+                sendTo = "",
+                data = messageBase.messageId.toString()
+            ).toJson(),
+            increate_message_id = false
+        )
+
+        if (!clientMessageId.containsKey(messageBase.name)) {
+            clientMessageId[messageBase.name] = 0
+        }
+        clientMessageId[messageBase.name] = clientMessageId[messageBase.name]!! + 1
+        websocketServerMessageHandler.handle(this, ws, messageClass)
+
+    }
+
+    fun handleClientDisconnect(ws: WebSocket) {
+
+        val clientName = websocketClients.remove(ws) ?: return
+
+        clientTaskRunningPermission.remove(clientName)
+        waitingForClientList.remove(clientName)
+        serverMessageIdCounter.remove(clientName)
+        clientMessageId.remove(clientName)
     }
 
     override fun onStart() {
-        startPingPong()
-        updateJarThread()
+        startThreads()
     }
 
-    override fun stop(){
+    override fun stop() {
         super.stop()
-        synchronized(keepWsRunningLock) {
-            keepWsRunning = false
-        }
-        synchronized(pingPongThreadLock) {
-            pingPongThread?.interrupt()
-            pingPongThread = null
-        }
-        synchronized(updateJarThreadLock) {
-            updateJarThread?.interrupt()
-            updateJarThread = null
-        }
-    }
-
-    fun sendMessageHistory(ws: WebSocket, messageId: Long) {
-        val clientName = synchronized(clientConnectedNamesLock) {
-            var clientName: String? = null
-            clientConnectedNames.forEach {
-                if (it.value == ws) {
-                    clientName = it.key
-                    return@forEach
-                }
-            }
-            if (clientName == null) {
-                return
-            }
-            clientName!!
-        }
-
-        synchronized(serverMessageIdCounterLock) {
-            synchronized(lastServerMessagesWithIdLock) {
-                if (!serverMessageIdCounter.containsKey(clientName)) {
-                    serverMessageIdCounter[clientName] = 0
-                }
-                serverMessageIdCounter[clientName] == messageId
-                while (true) {
-                    val messageToSend = lastServerMessagesWithId[clientName]!![serverMessageIdCounter[clientName]]
-                    if (messageToSend == null) {
-                        serverMessageIdCounter[clientName] = serverMessageIdCounter[clientName]!! - 1
-                        break
-                    }
-
-                    val message = synchronized(keyMapLock) {
-                        if (!keyMap.containsKey(clientName)) {
-                            return
-                        }
-                        keyMap[clientName]!!.encrypt(messageToSend)
-                    }
-                    ws.send(
-                        MessageBase(
-                            name = GlobalVariables.computerName,
-                            msg = message,
-                            messageId = serverMessageIdCounter[clientName]!!
-                        ).toJson()
-                    )
-                    serverMessageIdCounter[clientName] = serverMessageIdCounter[clientName]!! + 1
-                }
-            }
-        }
+        keepWsRunning = false
+        stopThreads()
     }
 
     fun sendMessage(ws: WebSocket, message: String, increate_message_id: Boolean = true) {
         if (message.isEmpty()) {
             return
         }
-        val clientName = getClientConnectedNameFromWs(ws) ?: return
+        val clientName = websocketClients[ws] ?: return
+        waitingForClientList[clientName] = message
 
-        removeServerMessageIfToBig(clientName)
-        synchronized(serverMessageIdCounterLock) {
-            synchronized(lastServerMessagesWithIdLock) {
-                val messageToSend = synchronized(keyMapLock) {
-                    if (!keyMap.containsKey(clientName)) {
-                        return
-                    }
-                    val messageToSend = keyMap[clientName]!!.encrypt(message)
-                    messageToSend
-                }
-                if (!serverMessageIdCounter.containsKey(clientName)) {
-                    serverMessageIdCounter[clientName] = 0
-                }
-                if (increate_message_id) {
-                    serverMessageIdCounter[clientName] = serverMessageIdCounter[clientName]!! + 1
-                }
-                val serverMessageId = serverMessageIdCounter[clientName]!!
-
-                if (!lastServerMessagesWithId.containsKey(clientName)) {
-                    lastServerMessagesWithId[clientName] = mutableMapOf()
-                }
-                lastServerMessagesWithId[clientName]!![serverMessageId] = message
-                ws.send(
-                    MessageBase(
-                        name = GlobalVariables.computerName,
-                        msg = messageToSend,
-                        messageId = serverMessageId
-                    ).toJson()
-                )
-
-            }
+        if (!keyMap.containsKey(clientName)) {
+            return
         }
-    }
 
-    fun decryptMessage(messageBase: MessageBase): String? {
-        synchronized(keyMapLock) {
-            val connectionKeyPair = if (!keyMap.containsKey(messageBase.name)) {
-                var connectionKeyPair = ConnectionKeyPair.loadFile(messageBase.name) ?: return null
-                connectionKeyPair = ConnectionKeyPair.loadFile(messageBase.name) ?: return null
-                keyMap[messageBase.name] = connectionKeyPair
-                connectionKeyPair
-            } else {
-                keyMap[messageBase.name]!!
-            }
-            return connectionKeyPair.decrypt(messageBase.msg)
-        }
-    }
-
-    fun updateJarThread() {
-        synchronized(updateJarThreadLock) {
-            if (updateJarThread != null) {
-                updateJarThread!!.interrupt()
-                updateJarThread = null
-            }
-            if (updateJarThread == null) {
-                updateJarThread = Thread {
-                    while (keepWsRunning) {
-                        try {
-                            Thread.sleep(1000)
-                        } catch (e: InterruptedException) {
-                            break
-                        }
-                        val softwareUpdate: SoftwareUpdate = SoftwareUpdate.newUpdateFile() ?: continue
-                        val clientNames: List<String> = getClientRegisteredNames()
-                        synchronized(clientUpdateDoneNamesLock) {
-                            clientNames.forEach {
-                                clientUpdateDoneNames[it] = 0
-                            }
-                        }
-                        var fileBytes = softwareUpdate.readFilePart()
-                        var i = 1
-                        while (fileBytes != null) {
-                            if (softwareUpdate.partAmount - i < 10){
-                                println("Server: Sending part $i of ${softwareUpdate.partAmount}")
-                            } else if (i % 10 == 0) {
-                                println("Server: Sending part $i of ${softwareUpdate.partAmount}")
-                            }
-                            val message = WebsocketMessageServer(
-                                type = MessageServerUpdate.TYPE,
-                                sendFrom = GlobalVariables.computerName,
-                                data = softwareUpdate.toMessageJson()
-                            ).toJson()
-                            for (clientName in clientNames) {
-                                val ws = getClientRegisterItem(clientName) ?: continue
-                                waitForClient(clientName, "")
-                                sendMessage(ws, message)
-                                setWaitingForClient(clientName = clientName, message = message)
-                            }
-                            fileBytes = softwareUpdate.readFilePart()
-                            i++
-                        }
-
-                        for (clientName in clientNames) {
-                            waitForClient(clientName, null)
-                        }
-                        var waitTimeStart = System.currentTimeMillis()
-                        var gotError = false
-                        while (true) {
-                            var allDone = 1
-                            synchronized(clientUpdateDoneNamesLock) {
-                                clientUpdateDoneNames.forEach {
-                                    if (it.value == 0) {
-                                        allDone = 0
-                                    }
-                                    if (it.value < 0) {
-                                        allDone = -1
-                                    }
-                                }
-                            }
-                            if (allDone == 1) {
-                                break
-                            }
-                            if (allDone == -1) {
-                                gotError = true
-                                break
-                            }
-                            if (System.currentTimeMillis() - waitTimeStart > 1000 * 60 * 5) {
-                                break
-                            }
-                            try {
-                                Thread.sleep(1000)
-                            } catch (e: InterruptedException) {
-                                return@Thread
-                            }
-                        }
-                        if (gotError) {
-                            continue
-                        }
-                        try {
-                            Thread.sleep(1000)
-                        } catch (e: InterruptedException) {
-                            return@Thread
-                        }
-                        softwareUpdate.toMessageJson()
-                        val message = MessageServerUpdate(
-                            version = softwareUpdate.version,
-                            hash = softwareUpdate.hashValue,
-                            size = softwareUpdate.partSize,
-                            packageNr = softwareUpdate.currentpart,
-                            packageAmount = softwareUpdate.partAmount,
-                            restart = true
-                        ).toJson()
-                        for (clientName in clientNames) {
-                            val ws = getClientRegisterItem(clientName) ?: continue
-                            waitForClient(clientName, "")
-                            sendMessage(ws,
-                                WebsocketMessageServer(
-                                    type = MessageServerUpdate.TYPE,
-                                    sendFrom = GlobalVariables.computerName,
-                                    data = message
-                                ).toJson()
-                            )
-                            setWaitingForClient(clientName = clientName, message = message)
-                            waitForClient(clientName, null)
-                        }
-                        softwareUpdate.startUpdate()
-                    }
-                }
-                updateJarThread!!.start()
-            }
-        }
-    }
-
-    fun startPingPong() {
-        synchronized(pingPongThreadLock) {
-            if (pingPongThread == null) {
-                pingPongThread = Thread {
-                    while (keepWsRunning) {
-                        try {
-                            Thread.sleep(100)
-                        } catch (e: InterruptedException) {
-                            break
-                        }
-                        val currentTime = System.currentTimeMillis()
-                        val clientsToRemove = mutableListOf<WebSocket>()
-                        synchronized(lastClientMessageTimeLock) {
-                            lastClientMessageTime.forEach {
-                                if (currentTime - it.value > pingPongDelayTime * 4) {
-                                    clientsToRemove.add(it.key)
-                                    println("Server: ${it.key} - Ping Pong timeout")
-                                }
-                            }
-                        }
-                        clientsToRemove.forEach {
-                            synchronized(lastClientMessageTimeLock) {
-                                if (lastClientMessageTime[it] != null) {
-                                    lastClientMessageTime.remove(it)
-                                }
-                            }
-                            synchronized(lastClientMessageTimeLock) {
-                                if (lastClientMessageTime[it] != null) {
-                                    lastClientMessageTime.remove(it)
-                                }
-                            }
-                            val clientName: String? = synchronized(clientConnectedNamesLock){
-                                clientConnectedNames.keys.firstOrNull { key -> clientConnectedNames[key] == it }
-                            }
-                            if (clientName != null) {
-                                synchronized(clientConnectedNamesLock) {
-                                    if (clientConnectedNames[clientName] != null) {
-                                        clientConnectedNames.remove(clientName)
-                                    }
-                                }
-                                synchronized(clientTaskRunningPermissionLock) {
-                                    if (clientTaskRunningPermission[clientName] != null) {
-                                        clientTaskRunningPermission.remove(clientName)
-                                    }
-                                }
-                            }
-                            it.close()
-                        }
-                    }
-                }
-                pingPongThread!!.start()
-            }
-        }
-    }
-
-    // getters and setters
-    fun updateLastClientMessageTime(clientName: WebSocket) {
-        synchronized(lastClientMessageTimeLock) {
-            lastClientMessageTime[clientName] = System.currentTimeMillis()
-        }
-    }
-
-    fun getLastClientMessageTime(clientName: WebSocket): Long {
-        synchronized(lastClientMessageTimeLock) {
-            return lastClientMessageTime[clientName] ?: 0
-        }
-    }
-
-    fun deleteLastClientMessageTime(clientName: WebSocket) {
-        synchronized(lastClientMessageTimeLock) {
-            lastClientMessageTime.remove(clientName)
-        }
-    }
-
-    fun getClientRegisteredNames(): List<String> {
-        synchronized(clientTaskRunningPermissionLock) {
-            return clientTaskRunningPermission.keys.toList()
-        }
-    }
-
-    fun getClientRegisterItem(key: String): WebSocket? {
-        synchronized(clientTaskRunningPermissionLock) {
-            return clientTaskRunningPermission[key]
-        }
-    }
-
-    fun setClientRegisterItem(key: String, value: WebSocket) {
-        synchronized(clientTaskRunningPermissionLock) {
-            clientTaskRunningPermission[key] = value
-        }
-    }
-
-    fun getClientRegisterNameFromWs(ws: WebSocket): String? {
-        synchronized(clientTaskRunningPermissionLock) {
-            for ((key, value) in clientTaskRunningPermission) {
-                if (value == ws) {
-                    return key
-                }
-            }
-        }
-        return null
-    }
-
-    fun removeClientRegisterItem(key: String) {
-        synchronized(clientTaskRunningPermissionLock) {
-            clientTaskRunningPermission.remove(key)
-        }
-    }
-
-    fun removeClientRegisterItem(ws: WebSocket) {
-        val key = getClientRegisterNameFromWs(ws)
-        synchronized(clientTaskRunningPermissionLock) {
-            if (key != null) {
-                clientTaskRunningPermission.remove(key)
-            }
-        }
-    }
-
-    fun getClientConnectedNames(): List<String> {
-        synchronized(clientConnectedNamesLock) {
-            return clientConnectedNames.keys.toList()
-        }
-    }
-
-    fun getClientConnectedItem(key: String): WebSocket? {
-        synchronized(clientConnectedNamesLock) {
-            return clientConnectedNames[key]
-        }
-    }
-
-    fun setClientConnectedItem(key: String, value: WebSocket) {
-        synchronized(clientConnectedNamesLock) {
-            clientConnectedNames[key] = value
-        }
-    }
-
-    fun getClientConnectedNameFromWs(ws: WebSocket): String? {
-        synchronized(clientConnectedNamesLock) {
-            for ((key, value) in clientConnectedNames) {
-                if (value == ws) {
-                    return key
-                }
-            }
-        }
-        return null
-    }
-
-    fun removeClientConnectedItem(key: String) {
-        synchronized(clientConnectedNamesLock) {
-            clientConnectedNames.remove(key)
-        }
-    }
-
-    fun removeClientConnectedItem(ws: WebSocket) {
-        val key = getClientConnectedNameFromWs(ws)
-        synchronized(clientConnectedNamesLock) {
-            if (key != null) {
-                clientConnectedNames.remove(key)
-            }
-        }
-    }
-
-    // server message ID
-    fun getServerMessageWithId(clientName: String, id: Long): String? {
-        synchronized(lastServerMessagesWithIdLock) {
-            val serverMessageHistory = lastServerMessagesWithId[clientName] ?: return null
-            return serverMessageHistory[id]
-        }
-    }
-
-    fun setServerMessageWithId(clientName: String, id: Long, message: String) {
-        synchronized(lastServerMessagesWithIdLock) {
-            if (!lastServerMessagesWithId.containsKey(clientName)) {
-                lastServerMessagesWithId[clientName] = mutableMapOf()
-            }
-            lastServerMessagesWithId[clientName]!![id] = message
-        }
-    }
-
-    fun removeServerMessageIfToBig(clientName: String) {
-        synchronized(lastServerMessagesWithIdLock) {
-            val serverMessageHistory = lastServerMessagesWithId[clientName] ?: return
-            if (serverMessageHistory.size > GlobalVariables.messageHistorySize) {
-                serverMessageHistory.remove(serverMessageHistory.keys.first())
-            }
-        }
-    }
-
-    fun getNextServerMessageId(clientName: String): Long {
-        synchronized(serverMessageIdCounterLock) {
-            if (!serverMessageIdCounter.containsKey(clientName)) {
-                serverMessageIdCounter[clientName] = 0
-            }
-            return serverMessageIdCounter[clientName]!! + 1
-        }
-    }
-
-    fun incrementServerMessageId(clientName: String): Long {
-        synchronized(serverMessageIdCounterLock) {
-            if (!serverMessageIdCounter.containsKey(clientName)) {
-                serverMessageIdCounter[clientName] = 0
-            }
-            serverMessageIdCounter[clientName] = serverMessageIdCounter[clientName]!! + 1
-            return serverMessageIdCounter[clientName]!!
-        }
-    }
-
-    fun resetServerMessageId(clientName: String) {
-        synchronized(serverMessageIdCounterLock) {
+        val messageToSend = encryptMessage(clientName, message) ?: return
+        if (!serverMessageIdCounter.containsKey(clientName)) {
             serverMessageIdCounter[clientName] = 0
         }
-    }
-    fun removeServerMessageId(clientName: String) {
-        synchronized(serverMessageIdCounterLock) {
-            serverMessageIdCounter.remove(clientName)
+        if (increate_message_id) {
+            serverMessageIdCounter[clientName] = serverMessageIdCounter[clientName]!! + 1
         }
+        val serverMessageId = serverMessageIdCounter[clientName]!!
+
+        ws.send(
+            MessageBase(
+                name = GlobalVariables.computerName,
+                msg = messageToSend,
+                messageId = serverMessageId
+            ).toJson()
+        )
     }
 
-    // client message ID
-    fun getNextClientMessageId(clientName: String): Long {
-        synchronized(clientMessageIdLock) {
-            if (!clientMessageId.containsKey(clientName)) {
-                clientMessageId[clientName] = 0
+    fun decryptMessage(clientName: String, message: String): String? {
+        if (!keyMap.containsKey(clientName)) {
+            val connectionKeyPair = ConnectionKeyPair.loadFile(clientName) ?: return null
+            keyMap[clientName] = connectionKeyPair
+        }
+        return keyMap[clientName]?.decrypt(message)
+
+    }
+
+
+    fun encryptMessage(clientName: String, message: String): String? {
+        if (!keyMap.containsKey(clientName)) {
+            val connectionKeyPair = ConnectionKeyPair.loadFile(clientName) ?: return null
+            keyMap[clientName] = connectionKeyPair
+        }
+        return keyMap[clientName]?.encrypt(message)
+
+    }
+
+    fun handleSoftwareUpdate() {
+        for ( message in waitingForClientList.values) {
+            if (message != null) {
+                return
             }
-            return clientMessageId[clientName]!! + 1
         }
-    }
-
-    fun setNextClientMessageId(clientName: String, id: Long) {
-        synchronized(clientMessageIdLock) {
-            if (!clientMessageId.containsKey(clientName)) {
-                clientMessageId[clientName] = 0
+        if (softwareUpdate == null) {
+            softwareUpdate = SoftwareUpdate.newUpdateFile() ?: return
+        }
+        val tempSoftwareUpdate = softwareUpdate ?: return
+        if (tempSoftwareUpdate.updateStatus == UpdateStatus.EVERYTHING_DONE) {
+            if (System.currentTimeMillis() - restartMessageSendTime < 1000 * 5) {
+                return
             }
-            clientMessageId[clientName] = id
+            tempSoftwareUpdate.startUpdate()
+            return
         }
-    }
 
-    fun incrementClientMessageId(clientName: String): Long {
-        synchronized(clientMessageIdLock) {
-            if (!clientMessageId.containsKey(clientName)) {
-                clientMessageId[clientName] = 0
+        if (tempSoftwareUpdate.updateStatus == UpdateStatus.NOT_STARTED) {
+            clientsToUpdate = clientTaskRunningPermission.keys.toList()
+            clientsToUpdate!!.forEach {
+                clientUpdateDoneNames[it] = 0
+
             }
-            clientMessageId[clientName] = clientMessageId[clientName]!! + 1
-            return clientMessageId[clientName]!!
+            tempSoftwareUpdate.updateStatus = UpdateStatus.RUNNING
         }
-    }
+        if (tempSoftwareUpdate.partAmount <= tempSoftwareUpdate.currentpart) {
+            tempSoftwareUpdate.updateStatus = UpdateStatus.FINISHED
+        }
 
-    fun resetClientMessageId(clientName: String) {
-        synchronized(clientMessageIdLock) {
-            clientMessageId[clientName] = 0
-        }
-    }
-    fun removeClientMessageId(clientName: String) {
-        synchronized(clientMessageIdLock) {
-            clientMessageId.remove(clientName)
-        }
-    }
+        if (tempSoftwareUpdate.updateStatus == UpdateStatus.RUNNING){
+            tempSoftwareUpdate.readFilePart()
 
-    fun setClientUpdateStatus(ws: WebSocket, status: Int) {
-        val clientName = getClientConnectedNameFromWs(ws) ?: return
-        synchronized(clientUpdateDoneNamesLock) {
-            clientUpdateDoneNames[clientName] = status
-        }
-    }
+            if (tempSoftwareUpdate.partAmount - tempSoftwareUpdate.currentpart < 10) {
+                println("Server: Sending part ${tempSoftwareUpdate.currentpart} of ${tempSoftwareUpdate.partAmount}")
+            } else if (tempSoftwareUpdate.currentpart % 10 == 0L) {
+                println("Server: Sending part ${tempSoftwareUpdate.currentpart} of ${tempSoftwareUpdate.partAmount}")
+            }
 
-    fun setWaitingForClient(clientName: String, message: String?) {
-        synchronized(waitingForClientListLock) {
+            val message = WebsocketMessageServer(
+                type = MessageServerUpdate.TYPE,
+                sendFrom = GlobalVariables.computerName,
+                data = tempSoftwareUpdate.toMessageJson()
+            ).toJson()
+            for (clientName in clientsToUpdate!!) {
+                val ws = clientTaskRunningPermission[clientName] ?: continue
+                sendMessage(ws, message)
+                waitingForClientList[clientName] = message
+            }
+            return
+        }
+
+        if (tempSoftwareUpdate.updateStatus == UpdateStatus.FINISHED) {
+            updateUploadFinishedTime = System.currentTimeMillis()
+            var allDone = 1
+            clientUpdateDoneNames.forEach {
+                if (it.value == 0) {
+                    allDone = 0
+                }
+                if (it.value < 0) {
+                    allDone = -1
+                    return@forEach
+                }
+            }
+            if (allDone == -1){
+                tempSoftwareUpdate.updateStatus = UpdateStatus.ERROR
+            } else if (allDone == 1) {
+                tempSoftwareUpdate.updateStatus = UpdateStatus.CLIENTS_DONE
+            }
+        }
+        if (tempSoftwareUpdate.updateStatus == UpdateStatus.FINISHED &&
+            System.currentTimeMillis() - updateUploadFinishedTime > 1000 * 60 * 5) {
+            println("Server: Update taking too long")
+            // TODO: handle error
+        }
+
+        if (tempSoftwareUpdate.updateStatus == UpdateStatus.ERROR) {
+            softwareUpdate = null
+            clientsToUpdate = null
+            println("Server: Update finished")
+            return
+        }
+
+        if (tempSoftwareUpdate.updateStatus != UpdateStatus.CLIENTS_DONE) {
+            return
+        }
+
+
+        tempSoftwareUpdate.toMessageJson()
+        val message = MessageServerUpdate(
+            version = tempSoftwareUpdate.version,
+            hash = tempSoftwareUpdate.hashValue,
+            size = tempSoftwareUpdate.partSize,
+            packageNr = tempSoftwareUpdate.currentpart,
+            packageAmount = tempSoftwareUpdate.partAmount,
+            restart = true
+        ).toJson()
+
+        for (clientName in clientsToUpdate!!) {
+            val ws = clientTaskRunningPermission[clientName] ?: continue
+            sendMessage(
+                ws,
+                WebsocketMessageServer(
+                    type = MessageServerUpdate.TYPE,
+                    sendFrom = GlobalVariables.computerName,
+                    data = message
+                ).toJson()
+            )
             waitingForClientList[clientName] = message
         }
+        tempSoftwareUpdate.updateStatus = UpdateStatus.EVERYTHING_DONE
+        restartMessageSendTime = System.currentTimeMillis()
     }
-
-    fun getWaitingForClient(clientName: String): String? {
-        synchronized(waitingForClientListLock) {
-            return waitingForClientList[clientName]
-        }
-    }
-
-    fun removeWaitingForClient(clientName: String) {
-        synchronized(waitingForClientListLock) {
-            waitingForClientList.remove(clientName)
-        }
-    }
-
-    fun waitForClient(clientName: String, setValue: String? = null) {
-        val waitingStartTime = System.currentTimeMillis()
-        while (true) {
-            synchronized(waitingForClientListLock) {
-                if (waitingForClientList[clientName] == null) {
-                    waitingForClientList[clientName] = setValue
-                    return
-                }
-                if (System.currentTimeMillis() - waitingStartTime > GlobalVariables.pingPongDelayTime) {
-                    val ws = getClientConnectedItem(clientName) ?: return
-                    sendMessage(
-                        ws = ws,
-                        message = waitingForClientList[clientName]!!,
-                        increate_message_id = false
-                    )
-                }
-            }
-            try {
-                Thread.sleep(1)
-            } catch (e: InterruptedException) {
-                break
-            }
-        }
-    }
-
 }
 
 

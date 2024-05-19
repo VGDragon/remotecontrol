@@ -300,7 +300,7 @@ fun App() {
                                 )
                                 websocketConnectionClient!!.waitForResponse()
                                 Text("Client List:", fontSize = 20.sp)
-                                for (clientName in websocketConnectionClient?.getExecClientListVariable()
+                                for (clientName in websocketConnectionClient?.execClientList?.toList()
                                     ?: listOf()) {
                                     Row {
                                         Button(
@@ -516,7 +516,7 @@ fun App() {
                                     .toJson()
                             )
                             websocketConnectionClient!!.waitForResponse()
-                            val clientList = websocketConnectionClient!!.getExecClientListVariable()
+                            val clientList = websocketConnectionClient!!.execClientList.toList()
                             if (clientList.isEmpty()) {
                                 waitUntilClientOnlineSelectedName = ""
                             } else if (waitUntilClientOnlineSelectedName.isBlank()) {
@@ -547,7 +547,7 @@ fun App() {
                                             .toJson()
                                     )
                                     websocketConnectionClient!!.waitForResponse()
-                                    val clientListTemp = websocketConnectionClient!!.getExecClientListVariable()
+                                    val clientListTemp = websocketConnectionClient!!.execClientList.toList()
                                     if (clientListTemp.isEmpty()) {
                                         waitUntilClientOnlineSelectedName = ""
                                         DropdownMenuItem(
@@ -714,7 +714,7 @@ fun App() {
                         }
                         Button(enabled = disconnectButtonActive.value,
                             onClick = {
-                                websocketConnectionClient!!.setIsConnected(false)
+                                websocketConnectionClient!!.isConnected = false
                                 websocketConnectionClient!!.close()
                                 websocketConnectionClient = null
                                 connectButtonActive.value = true
@@ -864,7 +864,10 @@ fun connectToServer(applicationData: ApplicationData): WebsocketConnectionClient
     try {
         val websocketConnectionClient = WebsocketConnectionClient(applicationData)
         websocketConnectionClient.connect()
-        websocketConnectionClient.waitForConnection()
+
+        while (!websocketConnectionClient.isConnected) {
+            Thread.sleep(100)
+        }
         return websocketConnectionClient
     } catch (e: Exception) {
         println("Error: ${e.message}")

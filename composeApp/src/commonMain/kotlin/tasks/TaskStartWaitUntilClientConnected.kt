@@ -34,7 +34,7 @@ class TaskStartWaitUntilClientConnected(
                         ).toJson()
                     )
                     websocketConnectionClient.waitForResponse()
-                    val clientList = websocketConnectionClient.getExecClientListVariable()
+                    val clientList = websocketConnectionClient.execClientList.toList()
                     if (clientList.contains(clientToWaitFor)) {
                         stillWaiting = false
                     } else {

@@ -47,7 +47,6 @@ kotlin {
             @OptIn(ExperimentalComposeLibrary::class)
             implementation(compose.components.resources)
 
-
             // add javax.websocket
             implementation("com.neovisionaries:nv-websocket-client:2.3")
             implementation("org.java-websocket:Java-WebSocket:1.5.4")
@@ -58,9 +57,8 @@ kotlin {
             // Ktor dependencies
             //implementation("io.ktor:ktor-server-core:2.3.8")
             //implementation("io.ktor:ktor-serialization:2.3.8")
-            implementation("io.ktor:ktor-server-core-jvm")
-            implementation("io.ktor:ktor-server-websockets-jvm")
-            implementation("io.ktor:ktor-server-netty-jvm")
+            implementation("io.ktor:ktor-server-websockets:2.3.10")
+            implementation("io.ktor:ktor-client-websockets:2.3.10")
 
             // add json parser gson
             implementation("com.google.code.gson:gson:2.8.7") // TODO change to kotson or moshi
@@ -87,7 +85,7 @@ android {
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
-        versionName = "1.0.1"
+        versionName = "1.0"
     }
     packaging {
         resources {
@@ -106,10 +104,10 @@ android {
     dependencies {
         debugImplementation(libs.compose.ui.tooling)
     }
-    //packagingOptions {
-    //    //exclude("META-INF/INDEX.LIST")
-    //    //exclude("META-INF/io.netty.versions.properties")
-    //}
+    packagingOptions {
+        //exclude("META-INF/INDEX.LIST")
+        //exclude("META-INF/io.netty.versions.properties")
+    }
 
 }
 dependencies {

@@ -30,7 +30,7 @@ class RestServer {
         if (server == null){
             return
         }
-        server!!.start(wait = true)
+        server!!.start(wait = wait)
     }
     fun stop(){
         if (server == null){

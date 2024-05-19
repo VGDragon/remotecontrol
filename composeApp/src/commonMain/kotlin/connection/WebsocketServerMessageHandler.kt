@@ -1,11 +1,13 @@
 package connection
 
+import GlobalVariables
 import filedata.ApplicationData
 import messages.*
 import messages.base.*
 import messages.base.client.*
 import messages.base.client.MessageClientClientList
 import messages.base.server.MessageServerClientList
+import messages.base.server.MessageServerRegister
 import org.java_websocket.WebSocket
 
 class WebsocketServerMessageHandler(val applicationData: ApplicationData) {
@@ -13,128 +15,215 @@ class WebsocketServerMessageHandler(val applicationData: ApplicationData) {
     fun handle(
         websocketConnectionServer: WebsocketConnectionServer,
         ws: WebSocket,
-        message: WebsocketMessageClient): String? {
+        message: WebsocketMessageClient
+    ) {
         if (message.apiKey != applicationData.apiKey) {
             println("Server: Invalid API key received")
             //ws.close()
-            return null
+            return
         }
         when (message.type) {
             "message" -> {
                 println("Server: Message received")
-                return MessageServerResponseCode.toJson(ServerAnswerStatus.OK, "")
+                websocketConnectionServer.sendMessage(
+                    ws = ws,
+                    message = WebsocketMessageServer(
+                        type = MessageServerResponseCode.TYPE,
+                        sendFrom = GlobalVariables.computerName,
+                        data = MessageServerResponseCode(
+                            status = ServerAnswerStatus.OK,
+                            message = ""
+                        ).toJson()
+                    ).toJson()
+                )
             }
 
             "error" -> {
                 println("Server: Error received")
-                return null
+                return
             }
+
             "ping" -> {
                 //println("Server: Ping received")
-                return WebsocketMessageServer(
+                websocketConnectionServer.sendMessage(
+                    ws = ws,
+                    message = WebsocketMessageServer(
                         type = "pong",
-                        sendFrom = "",
+                        sendFrom = GlobalVariables.computerName,
                         data = ""
                     ).toJson()
+                )
+                return
             }
+
             MessageClientRegister.TYPE -> {
                 val registerMessage = MessageClientRegister.fromJson(message.data)
 
                 if (registerMessage.isExecutable) {
-                    websocketConnectionServer.setClientRegisterItem(registerMessage.clientName, ws)
+                    websocketConnectionServer.clientTaskRunningPermission[registerMessage.clientName] = ws
                 }
-                websocketConnectionServer.setClientConnectedItem(registerMessage.clientName, ws)
+                websocketConnectionServer.websocketClients[ws] = registerMessage.clientName
                 println("Server: Client registered: ${registerMessage.clientName}")
-                return MessageServerResponseCode.toJson(ServerAnswerStatus.OK, "")
+                websocketConnectionServer.sendMessage(
+                    ws = ws,
+                    message = WebsocketMessageServer(
+                        type = MessageServerRegister.TYPE,
+                        sendFrom = GlobalVariables.computerName,
+                        data = MessageServerRegister(
+                            clientName = registerMessage.clientName,
+                            isExecutable = registerMessage.isExecutable,
+                            registered = true
+                        ).toJson()
+                    ).toJson()
+                )
+                return
             }
 
             MessageClientClientList.TYPE -> {
-                val clientList = websocketConnectionServer.getClientRegisteredNames()
+                val clientList = websocketConnectionServer.clientTaskRunningPermission.keys.toList()
                 val messageClientList = MessageServerClientList()
                 messageClientList.clientNames = clientList.toMutableList()
-                val clientListMessage = WebsocketMessageServer(
-                    type = MessageServerClientList.TYPE,
-                    sendFrom = message.sendFrom,
-                    data = messageClientList.toJson()
+
+                websocketConnectionServer.sendMessage(
+                    ws = ws,
+                    message = WebsocketMessageServer(
+                        type = MessageServerClientList.TYPE,
+                        sendFrom = message.sendFrom,
+                        data = messageClientList.toJson()
+                    ).toJson()
                 )
-                return clientListMessage.toJson()
+                return
             }
 
             MessageStartTask.TYPE -> {
                 val connectedWs = websocketConnectionServer
-                    .getClientRegisterItem(message.sendTo)
+                    .clientTaskRunningPermission[message.sendTo]
                 if (connectedWs == null) {
                     println("Server: Client not found")
-                    return  MessageServerResponseCode.toJson(
-                        ServerAnswerStatus.CLIENT_NOT_FOUND,
-                        "Client not found")
-
+                    websocketConnectionServer.sendMessage(
+                        ws = ws,
+                        message = WebsocketMessageServer(
+                            type = MessageServerResponseCode.TYPE,
+                            sendFrom = GlobalVariables.computerName,
+                            data = MessageServerResponseCode(
+                                status = ServerAnswerStatus.CLIENT_NOT_FOUND,
+                                message = "Client not found"
+                            ).toJson()
+                        ).toJson()
+                    )
+                    return
                 }
-                message.apiKey = ""
-                val messageToSend = WebsocketMessageServer(
-                    type = MessageStartTask.TYPE,
-                    sendFrom = message.sendFrom, data = message.data
-                ).toJson()
-                websocketConnectionServer.setWaitingForClient(
-                    clientName = message.sendTo,
-                    message = messageToSend)
+                //val messageToSend = WebsocketMessageServer(
+                //    type = MessageStartTask.TYPE,
+                //    sendFrom = message.sendFrom, data = message.data
+                //).toJson()
+                //websocketConnectionServer.waitingForClientList[message.sendTo] = messageToSend
                 websocketConnectionServer.sendMessage(
                     ws = connectedWs,
-                    message = messageToSend)
-
+                    message = WebsocketMessageServer(
+                        type = MessageStartTask.TYPE,
+                        sendFrom = message.sendFrom,
+                        data = message.data
+                    ).toJson()
+                )
                 println("Server: Task started")
-                return MessageServerResponseCode.toJson(ServerAnswerStatus.OK, "")
+
+                websocketConnectionServer.sendMessage(
+                    ws = ws,
+                    message = WebsocketMessageServer(
+                        type = MessageServerResponseCode.TYPE,
+                        sendFrom = GlobalVariables.computerName,
+                        data = MessageServerResponseCode(
+                            status = ServerAnswerStatus.OK,
+                            message = ""
+                        ).toJson()
+                    ).toJson()
+                )
+                return
             }
 
             MessageServerResponseCode.TYPE -> {
-
-                val connectedWs = websocketConnectionServer
-                    .getClientConnectedItem(message.sendTo)
-                if (connectedWs == null) {
-                    println("Server: Client not found")
-                    return MessageServerResponseCode.toJson(
-                        ServerAnswerStatus.CLIENT_NOT_FOUND,
-                        "Client not found")
-
+                val sendToWs = websocketConnectionServer.websocketClients.firstNotNullOfOrNull {
+                    if (it.value == message.sendTo) {
+                        it.key
+                    } else {
+                        null
+                    }
                 }
-                println("Server: Info received")
-                return WebsocketMessageServer(
-                        type = MessageServerResponseCode.TYPE,
-                        sendFrom = message.sendFrom, data = message.data
-                    ).toJson()
+                if (sendToWs == null) {
+                    println("Server: Client not found")
 
+                    websocketConnectionServer.sendMessage(
+                        ws = ws,
+                        message = WebsocketMessageServer(
+                            type = MessageServerResponseCode.TYPE,
+                            sendFrom = GlobalVariables.computerName,
+                            data = MessageServerResponseCode(
+                                status = ServerAnswerStatus.CLIENT_NOT_FOUND,
+                                message = "Client not found"
+                            ).toJson()
+                        ).toJson()
+                    )
+                    return
+                }
+
+                println("Server: Info received")
+
+                websocketConnectionServer.sendMessage(
+                    ws = sendToWs,
+                    message = WebsocketMessageServer(
+                        type = MessageServerResponseCode.TYPE,
+                        sendFrom = GlobalVariables.computerName,
+                        data = message.data
+                    ).toJson()
+                )
+                return
             }
 
             MessageClientScriptList.TYPE -> {
                 val connectedWs = websocketConnectionServer
-                    .getClientRegisterItem(message.sendTo)
+                    .clientTaskRunningPermission[message.sendTo]
                 if (connectedWs == null) {
                     println("Server: Client not found")
-                    return MessageServerResponseCode.toJson(
-                        ServerAnswerStatus.CLIENT_NOT_FOUND,
-                        "Client not found")
-
+                    websocketConnectionServer.sendMessage(
+                        ws = ws,
+                        message = WebsocketMessageServer(
+                            type = MessageServerResponseCode.TYPE,
+                            sendFrom = GlobalVariables.computerName,
+                            data = MessageServerResponseCode(
+                                status = ServerAnswerStatus.CLIENT_NOT_FOUND,
+                                message = "Client not found"
+                            ).toJson()
+                        ).toJson()
+                    )
+                    return
                 }
                 message.apiKey = ""
-                return WebsocketMessageServer(
-                        type = message.type,
-                        sendFrom = message.sendFrom, data = message.data
-                    ).toJson()
 
+                websocketConnectionServer.sendMessage(
+                    ws = connectedWs,
+                    message = WebsocketMessageServer(
+                        type = message.type,
+                        sendFrom = message.sendFrom,
+                        data = message.data
+                    ).toJson()
+                )
+                return
             }
+
             MessageClientUpdate.TYPE -> {
                 val messageClientUpdate = MessageClientUpdate.fromJson(message.data)
                 if (messageClientUpdate.updateOk) {
-                    websocketConnectionServer.setClientUpdateStatus(ws, 1)
+                    websocketConnectionServer.clientUpdateDoneNames[message.sendFrom] = 1
                 } else {
-                    websocketConnectionServer.setClientUpdateStatus(ws, -1)
+                    websocketConnectionServer.clientUpdateDoneNames[message.sendFrom] = -1
                 }
-                return null
+                return
             }
 
             else -> {
                 println("Server: Unknown message type received")
-                return null
+                return
             }
         }
     }
