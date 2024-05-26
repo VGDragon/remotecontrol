@@ -97,7 +97,6 @@ class SoftwareUpdate(
         if (updateFile.exists()) {
             return false
         }
-        saveToFile()
         newVersionFile.copyTo(updateFile)
         GlobalVariables.closeApplication()
         return true
@@ -136,13 +135,6 @@ class SoftwareUpdate(
         val updateFile = File(updateFolder, fileName())
         if (!updateFile.exists()) {
             return null
-        }
-        if (partAmount == -1L) {
-            val fileSize = updateFile.length()
-            partAmount = fileSize / GlobalVariables.jarMaxTransferSize
-            if (fileSize % GlobalVariables.jarMaxTransferSize > 0) {
-                partAmount++
-            }
         }
         if (inputStream == null) {
             inputStream = updateFile.inputStream()
@@ -196,11 +188,19 @@ class SoftwareUpdate(
                 fileName += parts[i]
             }
 
-            return SoftwareUpdate(
+            val fileSize = file.length()
+            var partAmount = fileSize / GlobalVariables.jarMaxTransferSize
+            if (fileSize % GlobalVariables.jarMaxTransferSize > 0) {
+                partAmount++
+            }
+            val softwareUpdate = SoftwareUpdate(
                 applicationName = fileName,
                 version = parts[parts.size - 1].substring(0, parts[parts.size - 1].length - ".jar".length),
                 hashValue = GlobalVariables.getHashValue(file)
             )
+            softwareUpdate.partAmount = partAmount
+            softwareUpdate.saveToFile()
+            return softwareUpdate
         }
 
         fun newUpdateFile(): SoftwareUpdate? {
@@ -227,7 +227,7 @@ class SoftwareUpdate(
             if (newFiles.size == 0) {
                 return null
             }
-            newFiles.sortBy { it.name }
+
             return fromJarFile(newFiles[newFiles.size - 1])
         }
     }

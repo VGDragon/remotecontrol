@@ -125,7 +125,21 @@ class WebsocketClientMessageHandler(val applicationData: ApplicationData) {
                     }
                 }
                 if (softwareDataExists) {
-                    println("Update already installed for version ${messageServerUpdate.version}")
+                    println("Update already downloaded for version ${messageServerUpdate.version}")
+                    ws.sendMessage(
+                        message = WebsocketMessageClient(
+                            type = MessageClientUpdate.TYPE,
+                            apiKey = ws.applicationData.apiKey,
+                            sendFrom = ws.computerName,
+                            sendTo = message.sendFrom,
+                            data = MessageClientUpdate(
+                                version = ws.softwareUpdate!!.version,
+                                hash = ws.softwareUpdate!!.hashValue,
+                                updateOk = true,
+                                updateFileDownloaded = true
+                            ).toJson()
+                        ).toJson()
+                    )
                     return
                 }
                 ws.softwareUpdate!!.writeFilePart(messageServerUpdate)

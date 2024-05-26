@@ -213,11 +213,15 @@ class WebsocketServerMessageHandler(val applicationData: ApplicationData) {
 
             MessageClientUpdate.TYPE -> {
                 val messageClientUpdate = MessageClientUpdate.fromJson(message.data)
+                if (messageClientUpdate.updateFileDownloaded) {
+                    websocketConnectionServer.clientUpdateDoneNames[message.sendFrom] = 1
+                    return
+                }
                 if (messageClientUpdate.updateOk) {
                     websocketConnectionServer.clientUpdateDoneNames[message.sendFrom] = 1
-                } else {
-                    websocketConnectionServer.clientUpdateDoneNames[message.sendFrom] = -1
+                    return
                 }
+                websocketConnectionServer.clientUpdateDoneNames[message.sendFrom] = -1
                 return
             }
 

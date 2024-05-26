@@ -26,12 +26,15 @@ class WebsocketConnectionServer : WebSocketServer {
     var websocketClients: MutableMap<WebSocket, String?> = mutableMapOf()
     val clientTaskRunningPermission: MutableMap<String, WebSocket> = mutableMapOf()
 
+    // key map for encryption
     val keyMap: MutableMap<String, ConnectionKeyPair> = mutableMapOf()
+    val lastServerMessageMap: MutableMap<WebSocket, String> = mutableMapOf()
+    val lastClientMessageMap: MutableMap<WebSocket, String> = mutableMapOf()
+    // last message time
     val lastClientMessageTime: MutableMap<WebSocket, Long> = mutableMapOf()
-    val pingPongDelayTime = GlobalVariables.pingPongDelayTime
 
+    // counter for messages
     val serverMessageIdCounter: MutableMap<String, Long> = mutableMapOf()
-
     val clientMessageId: MutableMap<String, Long> = mutableMapOf()
 
     //// software update
@@ -76,7 +79,7 @@ class WebsocketConnectionServer : WebSocketServer {
                 val currentTime = System.currentTimeMillis()
                 val clientsToRemove = mutableListOf<WebSocket>()
                 lastClientMessageTime.forEach {
-                    if (currentTime - it.value > pingPongDelayTime * 4) {
+                    if (currentTime - it.value > GlobalVariables.pingPongDelayTime * 4) {
                         clientsToRemove.add(it.key)
                         println("Server: ${it.key} - Ping Pong timeout")
                     }
@@ -175,14 +178,14 @@ class WebsocketConnectionServer : WebSocketServer {
         if (!clientMessageId.containsKey(messageBase.name)){
             clientMessageId[messageBase.name] = 0
         }
-        val nextClientMessageId = clientMessageId[messageBase.name]!! + 1
-        if (nextClientMessageId != messageBase.messageId) {
-            return
-        }
 
         val messageClass = WebsocketMessageClient.fromJson(receivedMessage)
         if (messageClass.type == MessageReceived.TYPE) {
             waitingForClientList[messageBase.name] = null
+            return
+        }
+        val nextClientMessageId = clientMessageId[messageBase.name]!! + 1
+        if (nextClientMessageId != messageBase.messageId) {
             return
         }
         sendMessage(
@@ -201,11 +204,16 @@ class WebsocketConnectionServer : WebSocketServer {
             clientMessageId[messageBase.name] = 0
         }
         clientMessageId[messageBase.name] = clientMessageId[messageBase.name]!! + 1
+        lastClientMessageMap[ws] = message
         websocketServerMessageHandler.handle(this, ws, messageClass)
 
     }
 
     fun handleClientDisconnect(ws: WebSocket) {
+
+        if (lastClientMessageTime[ws] != null) {
+            lastClientMessageTime.remove(ws)
+        }
 
         val clientName = websocketClients.remove(ws) ?: return
 
@@ -213,6 +221,7 @@ class WebsocketConnectionServer : WebSocketServer {
         waitingForClientList.remove(clientName)
         serverMessageIdCounter.remove(clientName)
         clientMessageId.remove(clientName)
+
     }
 
     override fun onStart() {
@@ -225,7 +234,10 @@ class WebsocketConnectionServer : WebSocketServer {
         stopThreads()
     }
 
-    fun sendMessage(ws: WebSocket, message: String, increate_message_id: Boolean = true) {
+    fun sendMessage(ws: WebSocket,
+                    message: String,
+                    increate_message_id: Boolean = true,
+                    saveMessage: Boolean = true) {
         if (message.isEmpty()) {
             return
         }
@@ -244,14 +256,16 @@ class WebsocketConnectionServer : WebSocketServer {
             serverMessageIdCounter[clientName] = serverMessageIdCounter[clientName]!! + 1
         }
         val serverMessageId = serverMessageIdCounter[clientName]!!
-
-        ws.send(
+        val encryptedMessageToSend =
             MessageBase(
                 name = GlobalVariables.computerName,
                 msg = messageToSend,
                 messageId = serverMessageId
             ).toJson()
-        )
+        if (saveMessage) {
+            lastServerMessageMap[ws] = encryptedMessageToSend
+        }
+        ws.send(encryptedMessageToSend)
     }
 
     fun decryptMessage(clientName: String, message: String): String? {
@@ -318,6 +332,9 @@ class WebsocketConnectionServer : WebSocketServer {
                 data = tempSoftwareUpdate.toMessageJson()
             ).toJson()
             for (clientName in clientsToUpdate!!) {
+                if (clientUpdateDoneNames[clientName] == 1) {
+                    continue
+                }
                 val ws = clientTaskRunningPermission[clientName] ?: continue
                 sendMessage(ws, message)
                 waitingForClientList[clientName] = message

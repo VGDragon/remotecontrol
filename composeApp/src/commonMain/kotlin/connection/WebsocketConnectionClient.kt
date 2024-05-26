@@ -9,6 +9,7 @@ import messages.*
 import messages.base.MessageBase
 import messages.base.MessageReceived
 import messages.base.MessageServerResponseCode
+import messages.base.ServerAnswerStatus
 import messages.base.client.MessageClientRegister
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -62,7 +63,12 @@ class WebsocketConnectionClient : WebSocketClient {
     var sendMessageThread: Thread = Thread {
         while (true) {
             if (messageSendQueue.size == 0) {
-                Thread.sleep(100)
+                try {
+                    Thread.sleep(100)
+                } catch (e: InterruptedException) {
+                    close()
+                    return@Thread
+                }
                 continue
             }
             val message = messageSendQueue.remove()
@@ -105,7 +111,12 @@ class WebsocketConnectionClient : WebSocketClient {
                         ).toJson()
                     sendMessage(pingPongMessage)
                 }
-                Thread.sleep(100)
+                try {
+                    Thread.sleep(100)
+                } catch (e: InterruptedException) {
+                    close()
+                    return@Thread
+                }
             }
             isConnected = false
             this.close()
@@ -119,7 +130,11 @@ class WebsocketConnectionClient : WebSocketClient {
         lastServerMessageReceivedTime.set(System.currentTimeMillis())
 
         while (!isConnected) {
-            Thread.sleep(100)
+            try {
+                Thread.sleep(100)
+            } catch (e: InterruptedException) {
+                return
+            }
             if (isConnectionError) {
                 println("Client: Connection error")
                 return
@@ -148,7 +163,12 @@ class WebsocketConnectionClient : WebSocketClient {
             increaseMessageId = false
         )
         while (!isRegistered) {
-            Thread.sleep(100)
+            try {
+                Thread.sleep(100)
+            } catch (e: InterruptedException) {
+                close()
+                return
+            }
             if (isConnectionError) {
                 println("Client: Connection error")
                 return
@@ -156,7 +176,11 @@ class WebsocketConnectionClient : WebSocketClient {
         }
         if (doJoin) {
             while (isConnected) {
-                Thread.sleep(100)
+                try {
+                    Thread.sleep(100)
+                } catch (e: InterruptedException) {
+                    break
+                }
             }
             this.close()
         }
@@ -166,7 +190,12 @@ class WebsocketConnectionClient : WebSocketClient {
         this.connect()
 
         while (!isConnected) {
-            Thread.sleep(100)
+            try {
+                Thread.sleep(100)
+            } catch (e: InterruptedException) {
+                close()
+                return
+            }
             if (isConnectionError) {
                 println("Client: Connection error")
                 return
@@ -182,7 +211,12 @@ class WebsocketConnectionClient : WebSocketClient {
 
     fun waitForResponse(): MessageServerResponseCode {
         while (serverInfoList.size == 0) {
-            Thread.sleep(100)
+            try {
+                Thread.sleep(100)
+            } catch (e: InterruptedException) {
+                close()
+                return MessageServerResponseCode(ServerAnswerStatus.ERROR, "")
+            }
         }
         return serverInfoList.removeAt(0)
     }

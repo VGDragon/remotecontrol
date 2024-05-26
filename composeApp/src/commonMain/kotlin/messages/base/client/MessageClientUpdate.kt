@@ -4,7 +4,8 @@ import com.google.gson.Gson
 
 class MessageClientUpdate (val version: String,
                            val hash: String,
-                           val updateOk: Boolean) {
+                           val updateOk: Boolean,
+                           val updateFileDownloaded: Boolean = false) {
     fun toJson(): String {
         return Gson().toJson(this)
     }
