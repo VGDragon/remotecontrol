@@ -11,7 +11,7 @@ class GlobalVariables {
         var updateFolder = "updates"
         var updateDataName = "updates.json"
         var computerName: String = ""
-        val pingPongDelayTime: Long = 4000L
+        val pingPongDelayTime: Long = 5000L
         val pingPongDelayTimeMax: Long = 20000L
         val messageHistorySize = 100
         val logName: String = "log.txt"

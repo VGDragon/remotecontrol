@@ -3,8 +3,12 @@ import connection.RestServer
 import filedata.ApplicationData
 import filedata.SoftwareUpdate
 import filedata.UpdateStatus
+import interfaces.TaskMessageInterface
 import messages.WebsocketMessageServer
 import messages.base.server.MessageServerUpdate
+import messages.tasks.MessageStartTaskScript
+import messages.tasks.MessageStartTaskWaitUntilClientConnected
+import messages.tasks.MessageStartTaskWaitUntilSeconds
 import java.io.File
 import java.net.InetAddress
 
@@ -115,8 +119,24 @@ fun updatefile() {
 
 }
 
+fun classFunctions(){
+    /*
+    val temp_list = listOf(
+        ::MessageStartTaskScript::class.java.f,
+        ::MessageStartTaskWaitUntilClientConnected,
+        ::MessageStartTaskWaitUntilSeconds,
+    )
+    val temp_item = ::MessageStartTaskScript
+    println(temp_item().toTask())
+    for (item in temp_list){
+        println(::item.TYPE as String)
+    }
+     */
+}
+
 fun main() {
     //val test = TempTestScript()
     //test.test()
-    updatefile()
+    //updatefile()
+    classFunctions()
 }

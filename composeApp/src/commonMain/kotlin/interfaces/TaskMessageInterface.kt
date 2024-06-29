@@ -13,7 +13,9 @@ interface TaskMessageInterface {
         fun fromJson(json: String): TaskMessageInterface {
             return Gson().fromJson(json, TaskMessageInterface::class.java)
         }
+        val TYPE: String = ""
     }
+
 
 
 

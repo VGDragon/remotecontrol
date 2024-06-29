@@ -16,6 +16,8 @@ import org.java_websocket.server.WebSocketServer
 import java.lang.Exception
 import java.net.InetSocketAddress
 import java.util.*
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.LinkedBlockingQueue
 
 
 class WebsocketConnectionServer : WebSocketServer {
@@ -46,16 +48,14 @@ class WebsocketConnectionServer : WebSocketServer {
     var restartMessageSendTime = 0L
 
     ///////// messages
-    val messageReceivedQueue = LinkedList<Pair<WebSocket, String>>()
-    val messageSendQueue = LinkedList<Pair<WebSocket, String>>()
-    var handleMessageThread: Thread
-    var sendMessageThread: Thread = Thread {
+    //val messageReceivedQueue = LinkedList<Pair<WebSocket, String>>()
+    //val messageSendQueue = LinkedList<Pair<WebSocket, String>>()
+    val messageReceivedQueue = ConcurrentLinkedQueue<Pair<WebSocket, String>>()
+    val messageSendQueue = LinkedBlockingQueue<Pair<WebSocket, String>>()
+    val handleMessageThread: Thread
+    val sendMessageThread: Thread = Thread {
         while (true) {
-            if (messageSendQueue.size == 0) {
-                Thread.sleep(100)
-                continue
-            }
-            val messagePair = messageSendQueue.remove()
+            val messagePair = messageSendQueue.take()
             messagePair.first.send(messagePair.second)
         }
     }
@@ -67,7 +67,7 @@ class WebsocketConnectionServer : WebSocketServer {
 
         this.handleMessageThread = Thread {
             while (true) {
-                if (messageReceivedQueue.size > 0) {
+                if (messageReceivedQueue.isNotEmpty()) {
                     val messagePair = messageReceivedQueue.remove()
                     val ws = messagePair.first
                     val message = messagePair.second

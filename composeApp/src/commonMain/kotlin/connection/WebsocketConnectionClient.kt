@@ -231,7 +231,7 @@ class WebsocketConnectionClient : WebSocketClient {
         val message = MessageBase("", "", clientMessageIdCounter)
         val messageString = message.toJson()
 
-        this.send(messageString)
+        this.messageSendQueue.add(messageString)
         while (connectionKeyPair == null) {
             Thread.sleep(100)
         }

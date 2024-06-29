@@ -14,14 +14,15 @@ import connection.WebsocketConnectionClient
 import filedata.ApplicationData
 import filedata.TaskActionData
 import filedata.TaskListData
+import guiElemetns.rowBigSeperator
+import guiElemetns.rowSmallSeperator
+import guiElemetns.writeErrorText
 import messages.WebsocketMessageClient
 import messages.base.client.MessageClientClientList
 import messages.base.client.MessageClientRegister
 import messages.base.client.MessageClientRemoveClientBridge
 import messages.base.client.MessageClientScriptList
-import messages.tasks.MessageStartTaskScript
-import messages.tasks.MessageStartTaskWaitUntilClientConnected
-import messages.tasks.MessageStartTaskWaitUntilSeconds
+import messages.tasks.*
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 
 
@@ -95,12 +96,11 @@ fun App() {
     val taskEntryData by remember { mutableStateOf(mutableStateMapOf<String, String>()) }
 
     // task data: start script
+    /*
     var scriptNames: MutableList<String> = mutableListOf()
     var scriptNamesDropdownActive by remember { mutableStateOf(false) }
     var scriptNameSelectedIndex by remember { mutableStateOf(0) }
-
-    var waitUntilClientOnlineSelectedName by remember { mutableStateOf("") }
-    var waitUntilClientOnlineDropdownActive by remember { mutableStateOf(false) }
+    */
 
     // gpt idea
     // state for triggering GUI update after removing task action data
@@ -112,7 +112,6 @@ fun App() {
         }
 
         if (newTaskListPopup) {
-
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -376,7 +375,7 @@ fun App() {
                     Row {
                         Text("Type:")
                         Text(
-                            entryTypeList[entryTypeSelectedIndex].first.get(),
+                            entryTypeList[entryTypeSelectedIndex],
                             modifier = Modifier.clickable(onClick = { isEntryTypeDropdownActive = true })
                                 .background(Color.LightGray)
                         )
@@ -399,7 +398,7 @@ fun App() {
                                         }
                                     )
                                 ) {
-                                    Text(entryType.first.get())
+                                    Text(entryType)
                                 }
                             }
                         }
@@ -408,184 +407,20 @@ fun App() {
 
                     // TODO add new task types here
                     // TODO: GUI task information
-                    when (entryTypeList[entryTypeSelectedIndex].first.get()) {
+                    when (entryTypeList[entryTypeSelectedIndex]) {
                         MessageStartTaskScript.TYPE -> {
-                            if (scriptNames.isEmpty()) {
-                                websocketConnectionClient!!.sendMessage(
-                                    WebsocketMessageClient(
-                                        type = MessageClientScriptList.TYPE,
-                                        apiKey = applicationData.apiKey,
-                                        sendTo = selectedClient,
-                                        sendFrom = websocketConnectionClient!!.computerName,
-                                        data = ""
-                                    )
-                                        .toJson()
-                                )
-                                val answer = websocketConnectionClient!!.waitForResponse()
-                                scriptNames = answer.message as MutableList<String>
-                                if (scriptNames.isEmpty()) {
-                                    taskEntryData["scriptName"] = ""
-                                    scriptNameSelectedIndex = -1
-                                } else {
-                                    taskEntryData["scriptName"] = scriptNames[scriptNameSelectedIndex]
-                                }
-                            }
-                            Row {
-                                Text("script")
-
-                                Text(
-                                    if (scriptNameSelectedIndex == -1) {
-                                        "     "
-                                    } else {
-                                        scriptNames[scriptNameSelectedIndex]
-                                    },
-                                    modifier = Modifier.clickable(onClick = { scriptNamesDropdownActive = true })
-                                        .background(Color.LightGray)
-                                )
-                                DropdownMenu(
-                                    expanded = scriptNamesDropdownActive,
-                                    onDismissRequest = { scriptNamesDropdownActive = false },
-                                    modifier = Modifier.height(170.dp)
-                                ) {
-                                    websocketConnectionClient!!.sendMessage(
-                                        WebsocketMessageClient(
-                                            type = MessageClientScriptList.TYPE,
-                                            apiKey = applicationData.apiKey,
-                                            sendTo = selectedClient,
-                                            sendFrom = websocketConnectionClient!!.computerName,
-                                            data = ""
-                                        )
-                                            .toJson()
-                                    )
-                                    val answer = websocketConnectionClient!!.waitForResponse()
-                                    scriptNames = answer.message as MutableList<String>
-                                    if (scriptNames.isEmpty()) {
-                                        taskEntryData["scriptName"] = ""
-                                        scriptNameSelectedIndex = -1
-
-                                        DropdownMenuItem(
-                                            onClick = {
-                                                scriptNameSelectedIndex = -1
-                                                scriptNamesDropdownActive = false
-                                            }, modifier = Modifier.background(
-                                                Color.LightGray
-                                            )
-                                        ) {
-                                            Text("     ")
-                                        }
-
-                                    } else {
-                                        taskEntryData["scriptName"] = scriptNames[scriptNameSelectedIndex]
-
-                                        scriptNames.forEachIndexed { index, scriptName ->
-                                            DropdownMenuItem(
-                                                onClick = {
-                                                    scriptNameSelectedIndex = index
-                                                    scriptNamesDropdownActive = false
-                                                }, modifier = Modifier.background(
-                                                    if (scriptNameSelectedIndex == index) {
-                                                        Color.LightGray
-                                                    } else {
-                                                        Color.White
-                                                    }
-                                                )
-                                            ) {
-                                                if (scriptNameSelectedIndex == index) {
-                                                    taskEntryData["scriptName"] = scriptName
-                                                }
-                                                Text(scriptName)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            messageStartTaskScriptGuiElements(
+                                websocketConnectionClient=websocketConnectionClient!!,
+                                selectedClient=selectedClient,
+                                taskEntryData=taskEntryData,
+                                apiKey = applicationData.apiKey)
                         }
-
                         MessageStartTaskWaitUntilClientConnected.TYPE -> {
-                            websocketConnectionClient!!.sendMessage(
-                                WebsocketMessageClient(
-                                    type = MessageClientRegister.TYPE,
-                                    apiKey = applicationData.apiKey,
-                                    sendFrom = "",
-                                    sendTo = "",
-                                    data = MessageClientRegister(
-                                        clientName = websocketConnectionClient!!.computerName,
-                                        isExecutable = false
-                                    ).toJson()
-                                )
-                                    .toJson()
+                            messageStartTaskWaitUntilClientConnectedGuiElements(
+                                websocketConnectionClient=websocketConnectionClient!!,
+                                taskEntryData=taskEntryData,
+                                apiKey = applicationData.apiKey
                             )
-                            websocketConnectionClient!!.waitForResponse()
-                            val clientList = websocketConnectionClient!!.execClientList.toList()
-                            if (clientList.isEmpty()) {
-                                waitUntilClientOnlineSelectedName = ""
-                            } else if (waitUntilClientOnlineSelectedName.isBlank()) {
-                                waitUntilClientOnlineSelectedName = clientList[0]
-                            }
-                            Row {
-                                Text("Client to wait for: ")
-                                Text(
-                                    waitUntilClientOnlineSelectedName, modifier = Modifier.clickable(
-                                        onClick = {
-                                            waitUntilClientOnlineDropdownActive = true
-                                        })
-                                        .background(Color.LightGray)
-                                )
-                                DropdownMenu(
-                                    expanded = waitUntilClientOnlineDropdownActive,
-                                    onDismissRequest = { waitUntilClientOnlineDropdownActive = false },
-                                    modifier = Modifier.height(170.dp)
-                                ) {
-                                    websocketConnectionClient!!.sendMessage(
-                                        WebsocketMessageClient(
-                                            type = MessageClientClientList.TYPE,
-                                            apiKey = applicationData.apiKey,
-                                            sendFrom = "",
-                                            sendTo = "",
-                                            data = ""
-                                        )
-                                            .toJson()
-                                    )
-                                    websocketConnectionClient!!.waitForResponse()
-                                    val clientListTemp = websocketConnectionClient!!.execClientList.toList()
-                                    if (clientListTemp.isEmpty()) {
-                                        waitUntilClientOnlineSelectedName = ""
-                                        DropdownMenuItem(
-                                            onClick = {
-                                                waitUntilClientOnlineSelectedName = ""
-                                                waitUntilClientOnlineDropdownActive = false
-                                            }, modifier = Modifier.background(
-                                                Color.LightGray
-                                            )
-                                        ) {
-                                            Text("     ")
-                                        }
-                                    } else {
-                                        if (waitUntilClientOnlineSelectedName.isBlank()) {
-                                            waitUntilClientOnlineSelectedName = clientListTemp[0]
-                                        }
-                                        clientListTemp.forEachIndexed { index, clientName ->
-                                            DropdownMenuItem(
-                                                onClick = {
-                                                    taskEntryData["clientToWaitForClient"] = clientName
-                                                    waitUntilClientOnlineSelectedName = clientName
-                                                    waitUntilClientOnlineDropdownActive = false
-                                                }, modifier = Modifier.background(
-                                                    if (waitUntilClientOnlineSelectedName == clientName) {
-                                                        Color.LightGray
-                                                    } else {
-                                                        Color.White
-                                                    }
-                                                )
-                                            ) {
-                                                Text(clientName)
-                                            }
-                                        }
-                                    }
-                                }
-
-
-                            }
                         }
 
                         MessageStartTaskWaitUntilSeconds.TYPE -> {
@@ -806,7 +641,7 @@ fun App() {
             editTaskListPopup = false
         } else if (addTaskEntry) {
             val tempTaskListData = TaskFunctions.getTaskFromGuiData(
-                taskType = entryTypeList[entryTypeSelectedIndex].first.get(),
+                taskType = entryTypeList[entryTypeSelectedIndex],
                 client = selectedClient,
                 entryTypeData = taskEntryData
             )
@@ -835,30 +670,6 @@ fun App() {
     }
 }
 
-@Composable
-fun rowBigSeperator() {
-    Row(modifier = Modifier.height(10.dp)) {
-
-    }
-}
-
-@Composable
-fun rowSmallSeperator() {
-    Row(modifier = Modifier.height(2.dp)) {
-
-    }
-}
-
-@Composable
-fun writeErrorText(errorText: String) {
-    Row() {
-        if (errorText.isNotBlank()) {
-            Text("Error: ${errorText}")
-        } else {
-            Text(" ")
-        }
-    }
-}
 
 fun connectToServer(applicationData: ApplicationData): WebsocketConnectionClient? {
     try {

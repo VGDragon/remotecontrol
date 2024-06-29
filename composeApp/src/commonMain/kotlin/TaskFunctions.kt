@@ -44,11 +44,11 @@ class TaskFunctions {
             }
 
         }
-        fun entryTypeList(): List<Triple<KProperty0<String>, Nothing?, Nothing?>> {
+        fun entryTypeList(): List<String> {
             return listOf(
-                Triple(MessageStartTaskScript::TYPE, null, null),
-                Triple(MessageStartTaskWaitUntilClientConnected::TYPE, null, null),
-                Triple(MessageStartTaskWaitUntilSeconds::TYPE, null, null),
+                MessageStartTaskScript.TYPE,
+                MessageStartTaskWaitUntilClientConnected.TYPE,
+                MessageStartTaskWaitUntilSeconds.TYPE,
                 // TODO add new task types here
                 //Triple(MessageStartTaskScript::TYPE, null, null)
             )

@@ -5,20 +5,27 @@ import filedata.ApplicationData
 import filedata.TaskActionData
 import filedata.TaskListData
 import messages.tasks.MessageStartTaskScript
+import java.io.File
+import java.net.InetAddress
 
 
 fun testingClientScript(){
 
-    GlobalVariables.computerName = System.getenv("COMPUTERNAME")
-    // storing a class in a variable and create a class object from it
-    val applicationData = ApplicationData.fromFile()
-    //val ws_server = WebsocketConnectionServer(applicationData)
-    //ws_server.start()
-    //Thread.sleep(3000)
+    GlobalVariables.applicationFolderName = File(File("data", "client"), "client")
+        .absoluteFile.relativeTo(File("").absoluteFile).path
+    GlobalVariables.createFolders()
+    GlobalVariables.jarFolder = File(GlobalVariables.applicationFolderName).absoluteFile.parentFile.canonicalPath
+    // get path of the JAR file
 
-    //val ws_client_exec = WebsocketConnectionClient(applicationData, true)
-    val ws_client = WebsocketConnectionClient(applicationData)
-    //ws_client_exec.connectAndRegister(doJoin = true)
+    val applicationData = ApplicationData.fromFile()
+    if (applicationData.computerName.isEmpty()){
+        val name = InetAddress.getLocalHost().hostName
+        applicationData.computerName = name
+        applicationData.saveToFile()
+        GlobalVariables.computerName = applicationData.computerName
+    } else {
+        GlobalVariables.computerName = applicationData.computerName
+    }
 
     application {
         Window(onCloseRequest = ::exitApplication) {
