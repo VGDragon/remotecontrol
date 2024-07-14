@@ -2,6 +2,10 @@ package connection
 
 import GlobalVariables
 import badclient.BadClientHandler
+import connection.connectionConfig.Connection
+import connection.connectionConfig.ConnectionData
+import connection.connectionConfig.configureRouting
+import connection.connectionConfig.configureSockets
 import filedata.ApplicationData
 import filedata.SoftwareUpdate
 import filedata.UpdateStatus
@@ -10,30 +14,39 @@ import messages.WebsocketMessageServer
 import messages.base.MessageBase
 import messages.base.MessageReceived
 import messages.base.server.MessageServerUpdate
-import org.java_websocket.WebSocket
-import org.java_websocket.handshake.ClientHandshake
-import org.java_websocket.server.WebSocketServer
-import java.lang.Exception
-import java.net.InetSocketAddress
 import java.util.*
-import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.LinkedBlockingQueue
 
+import io.ktor.server.application.*
+import io.ktor.server.engine.*
+import io.ktor.server.netty.*
 
-class WebsocketConnectionServer : WebSocketServer {
+// ktor websocket
+fun Application.module() {
+    val websocketConnectionServer = ConnectionData.websocketConnectionServer!!
+    val port = ConnectionData.port!!
+    configureRouting()
+    configureSockets(
+        websocketConnectionServer,
+        port = port
+    )
+}
+
+class WebsocketConnectionServer {
     val applicationData: ApplicationData
     var websocketServerMessageHandler: WebsocketServerMessageHandler
     var keepWsRunning: Boolean = true
+    var embeddedServer: NettyApplicationEngine? = null
 
-    var websocketClients: MutableMap<WebSocket, String?> = mutableMapOf()
-    val clientTaskRunningPermission: MutableMap<String, WebSocket> = mutableMapOf()
+    var websocketClients: MutableMap<Connection, String?> = mutableMapOf()
+    val clientTaskRunningPermission: MutableMap<String, Connection> = mutableMapOf()
 
     // key map for encryption
     val keyMap: MutableMap<String, ConnectionKeyPair> = mutableMapOf()
-    val lastServerMessageMap: MutableMap<WebSocket, String> = mutableMapOf()
-    val lastClientMessageMap: MutableMap<WebSocket, String> = mutableMapOf()
+    val lastServerMessageMap: MutableMap<Connection, String> = mutableMapOf()
+    val lastClientMessageMap: MutableMap<Connection, String> = mutableMapOf()
+
     // last message time
-    val lastClientMessageTime: MutableMap<WebSocket, Long> = mutableMapOf()
+    val lastClientMessageTime: MutableMap<Connection, Long> = mutableMapOf()
 
     // counter for messages
     val serverMessageIdCounter: MutableMap<String, Long> = mutableMapOf()
@@ -47,37 +60,37 @@ class WebsocketConnectionServer : WebSocketServer {
     var updateUploadFinishedTime = 0L
     var restartMessageSendTime = 0L
 
-    ///////// messages
-    //val messageReceivedQueue = LinkedList<Pair<WebSocket, String>>()
-    //val messageSendQueue = LinkedList<Pair<WebSocket, String>>()
-    val messageReceivedQueue = ConcurrentLinkedQueue<Pair<WebSocket, String>>()
-    val messageSendQueue = LinkedBlockingQueue<Pair<WebSocket, String>>()
-    val handleMessageThread: Thread
-    val sendMessageThread: Thread = Thread {
-        while (true) {
-            val messagePair = messageSendQueue.take()
-            messagePair.first.send(messagePair.second)
-        }
-    }
 
-    constructor(applicationData: ApplicationData) : super(InetSocketAddress(applicationData.port)) {
+    ///////// messages
+    //val handleMessageThread: Thread
+
+    val connections = Collections.synchronizedSet<Connection?>(LinkedHashSet())
+
+    constructor(applicationData: ApplicationData) {
         this.applicationData = applicationData
         this.websocketServerMessageHandler = WebsocketServerMessageHandler(applicationData)
         println("Server: Port ${applicationData.port} started")
-
+        /*
         this.handleMessageThread = Thread {
             while (true) {
-                if (messageReceivedQueue.isNotEmpty()) {
-                    val messagePair = messageReceivedQueue.remove()
-                    val ws = messagePair.first
-                    val message = messagePair.second
-                    lastClientMessageTime[ws] = System.currentTimeMillis()
-                    handleMessage(ws, message)
+                println("Server: Handling messages")
+                val messagesToHandle: MutableList<Connection> = mutableListOf()
+                for (connection in connections) {
+                    if (connection.receivedQueue.isNotEmpty()) {
+                        messagesToHandle.add(connection)
+                    }
+                }
+                if (messagesToHandle.isNotEmpty()) {
+                    for (connection in messagesToHandle) {
+                        val message = connection.receivedQueue.remove()
+                        handleMessage(connection, message)
+                        lastClientMessageTime[connection] = System.currentTimeMillis()
+                    }
                 } else {
                     handleSoftwareUpdate()
                 }
                 val currentTime = System.currentTimeMillis()
-                val clientsToRemove = mutableListOf<WebSocket>()
+                val clientsToRemove = mutableListOf<Connection>()
                 lastClientMessageTime.forEach {
                     if (currentTime - it.value > GlobalVariables.pingPongDelayTime * 4) {
                         clientsToRemove.add(it.key)
@@ -95,7 +108,7 @@ class WebsocketConnectionServer : WebSocketServer {
                             clientTaskRunningPermission.remove(clientName)
                         }
                     }
-                    it.close()
+                    it.closeSession = true
                 }
 
                 try {
@@ -105,59 +118,37 @@ class WebsocketConnectionServer : WebSocketServer {
                 }
             }
         }
+        */
+        ConnectionData.websocketConnectionServer = this
+        ConnectionData.port = applicationData.port
+        embeddedServer = embeddedServer(Netty, port = applicationData.port, module = Application::module)
+    }
+
+    fun start(wait: Boolean = true){
+        startThreads()
+        embeddedServer!!.start(wait = wait)
+    }
+
+    fun stop() {
+        keepWsRunning = false
+        stopThreads()
+        for (connection in connections) {
+            connection.closeSession = true
+        }
+        embeddedServer!!.stop(1000, 1000)
     }
 
     fun startThreads() {
-        handleMessageThread.start()
-        sendMessageThread.start()
+        //handleMessageThread.start()
     }
 
     fun stopThreads() {
-        handleMessageThread.interrupt()
-        sendMessageThread.interrupt()
-    }
-
-    override fun onOpen(p0: WebSocket?, p1: ClientHandshake?) {
-        if (p0 == null) {
-            return
-        }
-        websocketClients[p0] = null
-        lastClientMessageTime[p0] = System.currentTimeMillis()
-        println("Server: Client connected")
-    }
-
-    override fun onMessage(p0: WebSocket?, p1: String?) {
-        if (p1 == null || p0 == null) {
-            return
-        }
-        lastClientMessageTime[p0] = System.currentTimeMillis()
-        messageReceivedQueue.add(Pair(p0, p1))
+        //handleMessageThread.interrupt()
 
     }
 
-    override fun onError(p0: WebSocket?, p1: Exception?) {
-        println("Server: Error")
 
-        if (p1 != null) {
-            p1.printStackTrace()
-        }
-        if (p0 == null) {
-            return
-        }
-        handleClientDisconnect(p0)
-        p0.close()
-    }
-
-    override fun onClose(p0: WebSocket?, p1: Int, p2: String?, p3: Boolean) {
-        println("Server: Client disconnected")
-        if (p0 == null) {
-            return
-        }
-        handleClientDisconnect(p0)
-    }
-
-
-    fun handleMessage(ws: WebSocket, message: String) {
+    fun handleMessage(ws: Connection, message: String) {
 
         if (BadClientHandler.badClientMap.contains(ws)) {
             println("bad client")
@@ -167,7 +158,7 @@ class WebsocketConnectionServer : WebSocketServer {
         // send server name if client name is empty
         val messageBase = MessageBase.fromJson(message)
         if (messageBase.name.isEmpty()) {
-            ws.send(MessageBase("", GlobalVariables.computerName, 0L).toJson())
+            ws.sendQueue.add(MessageBase("", GlobalVariables.computerName, 0L).toJson())
             return
         }
         // decrypt message
@@ -175,7 +166,7 @@ class WebsocketConnectionServer : WebSocketServer {
             clientName = messageBase.name,
             message = messageBase.msg
         ) ?: return BadClientHandler.handleBadClient(ws)
-        if (!clientMessageId.containsKey(messageBase.name)){
+        if (!clientMessageId.containsKey(messageBase.name)) {
             clientMessageId[messageBase.name] = 0
         }
 
@@ -209,7 +200,7 @@ class WebsocketConnectionServer : WebSocketServer {
 
     }
 
-    fun handleClientDisconnect(ws: WebSocket) {
+    fun handleClientDisconnect(ws: Connection) {
 
         if (lastClientMessageTime[ws] != null) {
             lastClientMessageTime.remove(ws)
@@ -224,20 +215,12 @@ class WebsocketConnectionServer : WebSocketServer {
 
     }
 
-    override fun onStart() {
-        startThreads()
-    }
-
-    override fun stop() {
-        super.stop()
-        keepWsRunning = false
-        stopThreads()
-    }
-
-    fun sendMessage(ws: WebSocket,
-                    message: String,
-                    increate_message_id: Boolean = true,
-                    saveMessage: Boolean = true) {
+    fun sendMessage(
+        ws: Connection,
+        message: String,
+        increate_message_id: Boolean = true,
+        saveMessage: Boolean = true
+    ) {
         if (message.isEmpty()) {
             return
         }
@@ -265,7 +248,7 @@ class WebsocketConnectionServer : WebSocketServer {
         if (saveMessage) {
             lastServerMessageMap[ws] = encryptedMessageToSend
         }
-        ws.send(encryptedMessageToSend)
+        ws.sendQueue.add(encryptedMessageToSend)
     }
 
     fun decryptMessage(clientName: String, message: String): String? {
@@ -288,7 +271,7 @@ class WebsocketConnectionServer : WebSocketServer {
     }
 
     fun handleSoftwareUpdate() {
-        for ( message in waitingForClientList.values) {
+        for (message in waitingForClientList.values) {
             if (message != null) {
                 return
             }
@@ -317,7 +300,7 @@ class WebsocketConnectionServer : WebSocketServer {
             tempSoftwareUpdate.updateStatus = UpdateStatus.FINISHED
         }
 
-        if (tempSoftwareUpdate.updateStatus == UpdateStatus.RUNNING){
+        if (tempSoftwareUpdate.updateStatus == UpdateStatus.RUNNING) {
             tempSoftwareUpdate.readFilePart()
 
             if (tempSoftwareUpdate.partAmount - tempSoftwareUpdate.currentpart < 10) {
@@ -354,14 +337,15 @@ class WebsocketConnectionServer : WebSocketServer {
                     return@forEach
                 }
             }
-            if (allDone == -1){
+            if (allDone == -1) {
                 tempSoftwareUpdate.updateStatus = UpdateStatus.ERROR
             } else if (allDone == 1) {
                 tempSoftwareUpdate.updateStatus = UpdateStatus.CLIENTS_DONE
             }
         }
         if (tempSoftwareUpdate.updateStatus == UpdateStatus.FINISHED &&
-            System.currentTimeMillis() - updateUploadFinishedTime > 1000 * 60 * 5) {
+            System.currentTimeMillis() - updateUploadFinishedTime > 1000 * 60 * 5
+        ) {
             println("Server: Update taking too long")
             // TODO: handle error
         }

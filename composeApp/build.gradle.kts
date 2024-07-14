@@ -57,12 +57,19 @@ kotlin {
             // Ktor dependencies
             //implementation("io.ktor:ktor-server-core:2.3.8")
             //implementation("io.ktor:ktor-serialization:2.3.8")
-            implementation("io.ktor:ktor-server-websockets:2.3.10")
-            implementation("io.ktor:ktor-client-websockets:2.3.10")
 
             // add json parser gson
             implementation("com.google.code.gson:gson:2.8.7") // TODO change to kotson or moshi
             implementation("me.sujanpoudel.mputils:paths:0.1.1")
+
+
+
+            implementation("io.ktor:ktor-server-core-jvm:2.3.10")
+            implementation("io.ktor:ktor-server-websockets-jvm:2.3.10")
+            implementation("io.ktor:ktor-server-netty-jvm:2.3.10")
+            implementation("io.ktor:ktor-server-core:2.3.10")
+            implementation("io.ktor:ktor-server-netty:2.3.10")
+            implementation("io.ktor:ktor-server-websockets:2.3.10")
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)

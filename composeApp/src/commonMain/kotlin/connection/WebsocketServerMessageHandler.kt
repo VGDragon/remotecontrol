@@ -1,6 +1,7 @@
 package connection
 
 import GlobalVariables
+import connection.connectionConfig.Connection
 import filedata.ApplicationData
 import messages.*
 import messages.base.*
@@ -14,7 +15,7 @@ class WebsocketServerMessageHandler(val applicationData: ApplicationData) {
     // can be used without creating an instance of the class
     fun handle(
         websocketConnectionServer: WebsocketConnectionServer,
-        ws: WebSocket,
+        ws: Connection,
         message: WebsocketMessageClient
     ) {
         if (message.apiKey != applicationData.apiKey) {

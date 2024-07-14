@@ -41,7 +41,7 @@ fun startServerWithGuiTest(){
 
 
     val websocketConnectionServer = WebsocketConnectionServer(applicationData)
-    websocketConnectionServer.start()
+    //websocketConnectionServer.start()
     Thread.sleep(3000)
 
 
