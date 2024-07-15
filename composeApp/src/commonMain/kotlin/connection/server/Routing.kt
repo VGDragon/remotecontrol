@@ -1,4 +1,4 @@
-package connection.connectionConfig
+package connection.server
 
 import io.ktor.server.application.*
 import io.ktor.server.routing.*

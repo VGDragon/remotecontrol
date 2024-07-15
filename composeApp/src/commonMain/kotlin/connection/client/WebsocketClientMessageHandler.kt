@@ -1,4 +1,4 @@
-package connection
+package connection.client
 
 import filedata.ApplicationData
 import GlobalVariables

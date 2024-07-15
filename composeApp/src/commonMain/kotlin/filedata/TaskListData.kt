@@ -1,7 +1,7 @@
 package filedata
 
 import com.google.gson.Gson
-import connection.WebsocketConnectionClient
+import connection.client.WebsocketConnectionClient
 import messages.WebsocketMessageClient
 import messages.base.MessageStartTask
 import messages.tasks.MessageStartTaskSendTask

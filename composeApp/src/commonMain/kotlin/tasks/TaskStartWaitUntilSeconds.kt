@@ -1,6 +1,6 @@
 package tasks
 
-import connection.WebsocketConnectionClient
+import connection.client.WebsocketConnectionClient
 import interfaces.TaskInterface
 
 class TaskStartWaitUntilSeconds(

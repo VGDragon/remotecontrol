@@ -1,7 +1,6 @@
-package connection
+package connection.server
 
 import GlobalVariables
-import connection.connectionConfig.Connection
 import filedata.ApplicationData
 import messages.*
 import messages.base.*
@@ -9,7 +8,6 @@ import messages.base.client.*
 import messages.base.client.MessageClientClientList
 import messages.base.server.MessageServerClientList
 import messages.base.server.MessageServerRegister
-import org.java_websocket.WebSocket
 
 class WebsocketServerMessageHandler(val applicationData: ApplicationData) {
     // can be used without creating an instance of the class

@@ -1,4 +1,4 @@
-import connection.WebsocketConnectionClient
+import connection.client.WebsocketConnectionClient
 import filedata.ApplicationData
 import java.io.File
 

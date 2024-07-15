@@ -1,8 +1,8 @@
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import connection.RestServer
-import connection.WebsocketConnectionClient
-import connection.WebsocketConnectionServer
+import connection.client.WebsocketConnectionClient
+import connection.server.WebsocketConnectionServer
 import filedata.ApplicationData
 import java.io.File
 import java.net.InetAddress
@@ -17,7 +17,7 @@ class testServer {
     fun websocketClient(): WebsocketConnectionClient {
         val applicationData = ApplicationData.fromFile()
         val ws = WebsocketConnectionClient(applicationData)
-        ws.connect()
+        ws.startConnection()
         return ws
     }
 

@@ -1,6 +1,5 @@
-package connection.connectionConfig
+package connection.server
 
-import com.typesafe.config.ConfigException.Null
 import io.ktor.websocket.*
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.LinkedBlockingQueue

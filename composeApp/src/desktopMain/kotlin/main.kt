@@ -3,8 +3,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import connection.RestServer
-import connection.WebsocketConnectionClient
-import connection.WebsocketConnectionServer
+import connection.client.WebsocketConnectionClient
+import connection.server.WebsocketConnectionServer
 import filedata.ApplicationData
 import java.io.File
 import java.net.InetAddress

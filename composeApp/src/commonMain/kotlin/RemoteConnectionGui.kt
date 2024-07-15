@@ -10,7 +10,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import connection.WebsocketConnectionClient
+import connection.client.WebsocketConnectionClient
 import filedata.ApplicationData
 import filedata.TaskActionData
 import filedata.TaskListData
@@ -19,9 +19,6 @@ import guiElemetns.rowSmallSeperator
 import guiElemetns.writeErrorText
 import messages.WebsocketMessageClient
 import messages.base.client.MessageClientClientList
-import messages.base.client.MessageClientRegister
-import messages.base.client.MessageClientRemoveClientBridge
-import messages.base.client.MessageClientScriptList
 import messages.tasks.*
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 
@@ -517,17 +514,17 @@ fun App() {
                                             applicationData = applicationData,
                                             executeTask = false)
                                         websocketConnectionClientTemp.connectAndRegister(doJoin = false)
-                                        websocketConnectionClientTemp.sendMessage(
-                                            WebsocketMessageClient(
-                                                type = MessageClientClientList.TYPE,
-                                                apiKey = applicationData.apiKey,
-                                                sendFrom = "",
-                                                sendTo = "",
-                                                data = ""
-                                            )
-                                                .toJson()
-                                        )
-                                        websocketConnectionClientTemp.waitForResponse()
+                                        //websocketConnectionClientTemp.sendMessage(
+                                        //    WebsocketMessageClient(
+                                        //        type = MessageClientClientList.TYPE,
+                                        //        apiKey = applicationData.apiKey,
+                                        //        sendFrom = "",
+                                        //        sendTo = "",
+                                        //        data = ""
+                                        //    )
+                                        //        .toJson()
+                                        //)
+                                        //websocketConnectionClientTemp.waitForResponse()
                                         applicationData.saveToFile()
                                         websocketConnectionClient = websocketConnectionClientTemp
                                         connectButtonActive.value = false
@@ -550,7 +547,7 @@ fun App() {
                         Button(enabled = disconnectButtonActive.value,
                             onClick = {
                                 websocketConnectionClient!!.isConnected = false
-                                websocketConnectionClient!!.close()
+                                websocketConnectionClient!!.stopConnection()
                                 websocketConnectionClient = null
                                 connectButtonActive.value = true
                                 disconnectButtonActive.value = false
@@ -674,7 +671,7 @@ fun App() {
 fun connectToServer(applicationData: ApplicationData): WebsocketConnectionClient? {
     try {
         val websocketConnectionClient = WebsocketConnectionClient(applicationData)
-        websocketConnectionClient.connect()
+        websocketConnectionClient.startConnection()
 
         while (!websocketConnectionClient.isConnected) {
             Thread.sleep(100)

@@ -1,7 +1,7 @@
 package interfaces
 
 import com.google.gson.Gson
-import connection.WebsocketConnectionClient
+import connection.client.WebsocketConnectionClient
 
 interface TaskMessageInterface {
     val type: String

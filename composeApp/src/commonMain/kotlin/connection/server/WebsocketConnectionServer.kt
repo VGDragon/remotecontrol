@@ -1,11 +1,8 @@
-package connection
+package connection.server
 
 import GlobalVariables
 import badclient.BadClientHandler
-import connection.connectionConfig.Connection
-import connection.connectionConfig.ConnectionData
-import connection.connectionConfig.configureRouting
-import connection.connectionConfig.configureSockets
+import connection.ConnectionKeyPair
 import filedata.ApplicationData
 import filedata.SoftwareUpdate
 import filedata.UpdateStatus
@@ -62,7 +59,7 @@ class WebsocketConnectionServer {
 
 
     ///////// messages
-    //val handleMessageThread: Thread
+    val handleMessageThread: Thread
 
     val connections = Collections.synchronizedSet<Connection?>(LinkedHashSet())
 
@@ -70,10 +67,8 @@ class WebsocketConnectionServer {
         this.applicationData = applicationData
         this.websocketServerMessageHandler = WebsocketServerMessageHandler(applicationData)
         println("Server: Port ${applicationData.port} started")
-        /*
         this.handleMessageThread = Thread {
             while (true) {
-                println("Server: Handling messages")
                 val messagesToHandle: MutableList<Connection> = mutableListOf()
                 for (connection in connections) {
                     if (connection.receivedQueue.isNotEmpty()) {
@@ -118,11 +113,11 @@ class WebsocketConnectionServer {
                 }
             }
         }
-        */
         ConnectionData.websocketConnectionServer = this
         ConnectionData.port = applicationData.port
         embeddedServer = embeddedServer(Netty, port = applicationData.port, module = Application::module)
     }
+
 
     fun start(wait: Boolean = true){
         startThreads()
@@ -139,11 +134,11 @@ class WebsocketConnectionServer {
     }
 
     fun startThreads() {
-        //handleMessageThread.start()
+        handleMessageThread.start()
     }
 
     fun stopThreads() {
-        //handleMessageThread.interrupt()
+        handleMessageThread.interrupt()
 
     }
 

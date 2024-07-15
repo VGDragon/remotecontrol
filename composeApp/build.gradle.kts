@@ -14,12 +14,11 @@ repositories {
     google()
 }
 
-
 kotlin {
     androidTarget {
         compilations.all {
             kotlinOptions {
-                jvmTarget = "1.8"
+                jvmTarget = "21"
             }
         }
     }
@@ -46,6 +45,7 @@ kotlin {
             implementation(compose.ui)
             @OptIn(ExperimentalComposeLibrary::class)
             implementation(compose.components.resources)
+            implementation(libs.ktor.client.core)
 
             // add javax.websocket
             implementation("com.neovisionaries:nv-websocket-client:2.3")
@@ -62,14 +62,18 @@ kotlin {
             implementation("com.google.code.gson:gson:2.8.7") // TODO change to kotson or moshi
             implementation("me.sujanpoudel.mputils:paths:0.1.1")
 
-
-
+            // websockets server
             implementation("io.ktor:ktor-server-core-jvm:2.3.10")
             implementation("io.ktor:ktor-server-websockets-jvm:2.3.10")
             implementation("io.ktor:ktor-server-netty-jvm:2.3.10")
             implementation("io.ktor:ktor-server-core:2.3.10")
             implementation("io.ktor:ktor-server-netty:2.3.10")
             implementation("io.ktor:ktor-server-websockets:2.3.10")
+
+            // websockets client
+            implementation("io.ktor:ktor-client-core:2.3.10")
+            implementation("io.ktor:ktor-client-cio:2.3.10")
+            implementation("io.ktor:ktor-client-websockets:2.3.10")
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)

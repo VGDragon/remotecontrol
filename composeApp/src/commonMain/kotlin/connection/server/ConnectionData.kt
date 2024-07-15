@@ -1,6 +1,4 @@
-package connection.connectionConfig
-
-import connection.WebsocketConnectionServer
+package connection.server
 
 class ConnectionData {
     companion object {

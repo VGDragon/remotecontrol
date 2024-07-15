@@ -1,9 +1,7 @@
 package badclient
 
-import connection.connectionConfig.Connection
-import io.ktor.websocket.*
+import connection.server.Connection
 import messages.base.MessageBase
-import org.java_websocket.WebSocket
 import kotlin.random.Random
 
 class BadClientHandler (val p0: Connection, var messageNumber: Int){

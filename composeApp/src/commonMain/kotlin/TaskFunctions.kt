@@ -1,8 +1,7 @@
-import connection.WebsocketConnectionClient
+import connection.client.WebsocketConnectionClient
 import interfaces.TaskInterface
 import interfaces.TaskMessageInterface
 import messages.tasks.*
-import kotlin.reflect.KProperty0
 
 class TaskFunctions {
     companion object {

@@ -3,9 +3,6 @@ package filedata
 import GlobalVariables
 import GlobalVariables.Companion.waitForFileFinishedCreating
 import com.google.gson.Gson
-import connection.WebsocketConnectionClient
-import messages.WebsocketMessageClient
-import messages.base.client.MessageClientUpdate
 import messages.base.server.MessageServerUpdate
 import okio.ByteString.Companion.toByteString
 import java.io.File

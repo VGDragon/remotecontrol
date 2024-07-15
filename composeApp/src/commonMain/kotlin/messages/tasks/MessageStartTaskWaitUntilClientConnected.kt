@@ -11,12 +11,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.google.gson.Gson
-import connection.WebsocketConnectionClient
+import connection.client.WebsocketConnectionClient
 import interfaces.TaskInterface
 import interfaces.TaskMessageInterface
 import messages.WebsocketMessageClient
 import messages.base.client.MessageClientClientList
-import tasks.TaskStartScript
 import tasks.TaskStartWaitUntilClientConnected
 
 class MessageStartTaskWaitUntilClientConnected(override val type: String, override val clientTo: String, val clientToWaitFor: String,): TaskMessageInterface {

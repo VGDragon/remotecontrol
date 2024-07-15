@@ -1,9 +1,8 @@
 package messages.tasks
 import com.google.gson.Gson
-import connection.WebsocketConnectionClient
+import connection.client.WebsocketConnectionClient
 import interfaces.TaskInterface
 import interfaces.TaskMessageInterface
-import tasks.TaskStartWaitUntilClientConnected
 import tasks.TaskStartWaitUntilSeconds
 
 class MessageStartTaskWaitUntilSeconds(override val type: String, override val clientTo: String, val waitUntilSeconds: Long,): TaskMessageInterface {

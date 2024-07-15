@@ -1,7 +1,7 @@
 package tasks
 
 import GlobalVariables
-import connection.WebsocketConnectionClient
+import connection.client.WebsocketConnectionClient
 import interfaces.TaskInterface
 import java.io.File
 

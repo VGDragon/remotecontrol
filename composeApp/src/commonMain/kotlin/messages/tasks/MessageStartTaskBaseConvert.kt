@@ -1,7 +1,7 @@
 package messages.tasks
 
 import com.google.gson.Gson
-import connection.WebsocketConnectionClient
+import connection.client.WebsocketConnectionClient
 import interfaces.TaskInterface
 import interfaces.TaskMessageInterface
 import tasks.TaskStartScript

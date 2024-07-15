@@ -1,6 +1,6 @@
 package tasks
 
-import connection.WebsocketConnectionClient
+import connection.client.WebsocketConnectionClient
 import interfaces.TaskInterface
 import messages.WebsocketMessageClient
 import messages.base.MessageStartTask
