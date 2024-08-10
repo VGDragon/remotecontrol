@@ -59,7 +59,6 @@ class WebsocketConnectionServer {
 
 
     ///////// messages
-    val handleMessageThread: Thread
 
     val connections = Collections.synchronizedSet<Connection?>(LinkedHashSet())
 
@@ -67,52 +66,6 @@ class WebsocketConnectionServer {
         this.applicationData = applicationData
         this.websocketServerMessageHandler = WebsocketServerMessageHandler(applicationData)
         println("Server: Port ${applicationData.port} started")
-        this.handleMessageThread = Thread {
-            while (true) {
-                val messagesToHandle: MutableList<Connection> = mutableListOf()
-                for (connection in connections) {
-                    if (connection.receivedQueue.isNotEmpty()) {
-                        messagesToHandle.add(connection)
-                    }
-                }
-                if (messagesToHandle.isNotEmpty()) {
-                    for (connection in messagesToHandle) {
-                        val message = connection.receivedQueue.remove()
-                        handleMessage(connection, message)
-                        lastClientMessageTime[connection] = System.currentTimeMillis()
-                    }
-                } else {
-                    handleSoftwareUpdate()
-                }
-                val currentTime = System.currentTimeMillis()
-                val clientsToRemove = mutableListOf<Connection>()
-                lastClientMessageTime.forEach {
-                    if (currentTime - it.value > GlobalVariables.pingPongDelayTime * 4) {
-                        clientsToRemove.add(it.key)
-                        println("Server: ${it.key} - Ping Pong timeout")
-                    }
-                }
-
-                clientsToRemove.forEach {
-                    if (lastClientMessageTime[it] != null) {
-                        lastClientMessageTime.remove(it)
-                    }
-                    val clientName = websocketClients.remove(it)
-                    if (clientName != null) {
-                        if (clientTaskRunningPermission[clientName] != null) {
-                            clientTaskRunningPermission.remove(clientName)
-                        }
-                    }
-                    it.closeSession = true
-                }
-
-                try {
-                    Thread.sleep(100)
-                } catch (e: InterruptedException) {
-                    break
-                }
-            }
-        }
         ConnectionData.websocketConnectionServer = this
         ConnectionData.port = applicationData.port
         embeddedServer = embeddedServer(Netty, port = applicationData.port, module = Application::module)
@@ -134,11 +87,11 @@ class WebsocketConnectionServer {
     }
 
     fun startThreads() {
-        handleMessageThread.start()
+        //handleMessageThread.start()
     }
 
     fun stopThreads() {
-        handleMessageThread.interrupt()
+        //handleMessageThread.interrupt()
 
     }
 

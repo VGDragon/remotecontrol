@@ -25,6 +25,8 @@ import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.websocket.*
 import io.ktor.http.*
 import io.ktor.websocket.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 class WebsocketConnectionClient {
@@ -66,11 +68,10 @@ class WebsocketConnectionClient {
     var handleMessageThread: Thread
 
     // connection
-    val client = HttpClient{
+    val client = HttpClient {
         install(WebSockets)
     }
     val connectionThread: Thread
-
 
 
     constructor(applicationData: ApplicationData, executeTask: Boolean = false) {
@@ -85,8 +86,8 @@ class WebsocketConnectionClient {
             while (true) {
                 if (messageReceivedQueue.size > 0) {
 
-                    val message = messageReceivedQueue.remove()
-                    println("Client: Received message: $message")
+                    val message = messageReceivedQueue.pop()
+                    //println("Client: Received message: $message")
                     handleMessage(message)
                     continue
                 }
@@ -120,43 +121,51 @@ class WebsocketConnectionClient {
         }
 
         this.connectionThread = Thread {
-            runBlocking {
-                client.webSocket(method = HttpMethod.Get, host = applicationData.address, port = applicationData.port, path = "/") {
-                    lastServerMessageReceivedTime.set(System.currentTimeMillis())
-                    isConnected = true
-                    var didSomething = false
-                    while(true) {
-                        if (!incoming.isEmpty) {
-                            val frame = incoming.receive()
-                            println(frame)
-                            val incomingMessage = frame as? Frame.Text ?: continue
-
-                            val message = incomingMessage.readText()
-                            messageReceivedQueue.add(message)
-                            didSomething = true
-                        }
-                        if (!messageSendQueue.isEmpty()){
-                            val sendMessage = messageSendQueue.remove()
-                            send(sendMessage)
-                            didSomething = true
-                        }
-                        if (!didSomething) {
-                            try {
-                                Thread.sleep(10)
-                            } catch (e: InterruptedException) {
-                                break
+            try {
+                runBlocking {
+                    client.webSocket(
+                        method = HttpMethod.Get,
+                        host = applicationData.address,
+                        port = applicationData.port,
+                        path = "/"
+                    ) {
+                        launch {
+                            while (true) {
+                                if (!messageSendQueue.isEmpty()) {
+                                    val sendMessage = messageSendQueue.remove()
+                                    send(sendMessage)
+                                } else {
+                                    try {
+                                        delay(10)
+                                    } catch (e: InterruptedException) {
+                                        break
+                                    }
+                                }
                             }
                         }
 
-                        didSomething = false
+                        lastServerMessageReceivedTime.set(System.currentTimeMillis())
+                        isConnected = true
+                        while (isConnected) {
+                            val frame = incoming.receive()
+                            //println(frame)
+                            val incomingMessage = frame as? Frame.Text ?: continue
+                            lastServerMessageReceivedTime.set(System.currentTimeMillis())
+                            val message = incomingMessage.readText()
+                            messageReceivedQueue.add(message)
+
+                        }
                     }
                 }
+
+            } catch (e: InterruptedException) {
+                return@Thread
             }
         }
     }
 
 
-    fun startConnection(){
+    fun startConnection() {
         connectionThread.start()
     }
 
@@ -296,7 +305,7 @@ class WebsocketConnectionClient {
         if (connectionKeyPair == null) {
             return
         }
-        println("Client: Send message: $message")
+        //println("Client: Send message: $message")
         waitingForServerMessage = message
         val messageToSend = connectionKeyPair!!.encrypt(message)
         if (increaseMessageId) {
@@ -420,6 +429,7 @@ class WebsocketConnectionClient {
     fun startThreads() {
         handleMessageThread.start()
     }
+
     fun stopThreads() {
         handleMessageThread.interrupt()
     }
